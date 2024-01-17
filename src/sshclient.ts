@@ -6,6 +6,8 @@ import {
   EmitterSubscription
 } from 'react-native';
 
+console.log('this line should fail the commit')
+
 const { RNSSHClient } = NativeModules;
 
 const RNSSHClientEmitter = new NativeEventEmitter(RNSSHClient);
