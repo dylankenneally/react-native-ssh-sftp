@@ -244,15 +244,14 @@ This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://g
 - [x] README to have credits to original author(s)/repos
 - [x] package details correct? podspec details correct?
 - [x] repo settings (security, etc)
-- [x] sort out the grunt stuff, post install script, etc
-- [x] review/update dev devs
+- [ ] sort out the grunt stuff, post install script, etc
+- [ ] review/update dev devs
   - [x] typescript
-  - [x] eslint
-- [x] review src/*ts files
-- [x] linting, tsconfig, etc
+  - [ ] eslint
+- [ ] review src/*ts files
+- [ ] linting, tsconfig, etc
 - [ ] contributing guide
-  - [ ] README to include prerequisites, etc
-- [x] update dependencies, look at PR's in upstream repos
+- [ ] update dependencies, look at PR's in upstream repos
 - [ ] update versioning (auto on commit?)
 - [ ] gh actions
   - [x] depenabot updates
@@ -262,6 +261,5 @@ This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://g
 - [ ] publish on npmjs
 - [ ] example app to be restored
 - [ ] iOS support to be made functional (again)
-  - [ ] review if flippers OpenSSL version is causing issues: <https://github.com/shaqian/react-native-ssh-sftp/issues/19>
 - [ ] look at using the latest version of NMSSH
 - [ ] engines (node/npm) in package.json

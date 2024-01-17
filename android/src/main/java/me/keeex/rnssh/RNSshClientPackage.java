@@ -1,4 +1,4 @@
-package me.dylankenneally.rnssh;
+package me.keeex.rnssh;
 
 import java.util.Arrays;
 import java.util.Collections;

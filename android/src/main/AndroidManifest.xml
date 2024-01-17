@@ -1,2 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="me.dylankenneally.rnssh">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="me.keeex.rnssh">
+
 </manifest>
+  
