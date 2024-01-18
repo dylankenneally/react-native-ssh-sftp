@@ -2,7 +2,7 @@
 
 SSH and SFTP client library for React Native on iOS and Android.
 
-[![Compile package](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml)
+[![Compile package](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml) [![Publish package to npmjs.com](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml)
 
 ## Installation
 
@@ -39,6 +39,10 @@ cd -
 >   }
 > }
 > ```
+
+#### Having OpenSSL issues on iOS?
+
+If you are using [Flipper](https://fbflipper.com/) to debug your app, it will already have a copy of OpenSSL included. This can cause issues with the version of OpenSSL that NMSSH uses. You can disable flipper by removing/commenting out the `flipper_configuration => flipper_config,` line in your `Podfile`.
 
 ### Android
 
@@ -234,34 +238,7 @@ This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://g
 
 ## TODO list
 
-- [x] README to have credits to original author(s)/repos
-- [x] package details correct? podspec details correct?
-- [x] repo settings (security, etc)
-- [x] sort out the grunt stuff, post install script, etc
-- [x] review/update dev devs
-  - [x] typescript
-  - [x] eslint
-- [x] review src/*ts files
-- [x] linting, tsconfig, etc
 - [ ] contributing guide
   - [ ] README to include prerequisites, etc
-- [x] update dependencies, look at PR's in upstream repos
-- [x] update versioning (auto on commit?)
-- [ ] gh actions
-  - [x] depenabot updates
-  - [x] build on PR
-  - [ ] tag
-  - [ ] publish to npmjs
-- [x] publish on npmjs
 - [ ] example app to be restored
-- [x] iOS support to be made functional (again)
-  - [x] review if flippers OpenSSL version is causing issues: <https://github.com/shaqian/react-native-ssh-sftp/issues/19>
 - [ ] look at using the latest version of NMSSH
-- [x] engines (node/npm) in package.json
-- [x] branch protections
-
-### WIP notes
-
-#### Flipper - OpenSSL version issue
-
-Disabling Flipper in iOS does not resolve the issue. But... it does remove the extra OpenSSL libs, which is a good thing. Add to notes for installation/usage?
