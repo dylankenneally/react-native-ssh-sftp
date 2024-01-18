@@ -59,7 +59,7 @@ All functions that run asynchronously where we have to wait for a result returns
 ### Create a client using password authentication
 
 ```javascript
-import SSHClient from 'react-native-ssh-sftp';
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
 
 SSHClient.connectWithPassword(
   "10.0.0.10",
@@ -223,6 +223,10 @@ client.sftpCancelUpload();
 client.disconnectSFTP();
 ```
 
+## Example app
+
+You can find a very simple example app for the usage of this library [here](https://github.com/dylankenneally/react-native-ssh-sftp-example).
+
 ## Credits
 
 This package wraps the following libraries, which provide the actual SSH/SFTP functionality:
@@ -240,5 +244,4 @@ This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://g
 
 - [ ] contributing guide
   - [ ] README to include prerequisites, etc
-- [ ] example app to be restored
 - [ ] look at using the latest version of NMSSH
