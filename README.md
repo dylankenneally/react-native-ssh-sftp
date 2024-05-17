@@ -29,16 +29,8 @@ pod install
 cd -
 ```
 
-> [!TIP]
-> Adding a `postinstall` script to your `package.json` file to run `pod install` after `npm install` is a good idea. The [`pod-install`](https://www.npmjs.com/package/pod-install) package is a good way to do this.
->
-> ```json
-> {
->   "scripts": {
->     "postinstall": "npx pod-install",
->   }
-> }
-> ```
+> [!NOTE]
+> On iOS, this package currently doesn't support the simulator, you will need to have your app running on a physical device. If you  would like to know more about this, see [this issue](https://github.com/dylankenneally/react-native-ssh-sftp/issues/20). I'd welcome a PR to resolve this.
 
 #### Having OpenSSL issues on iOS?
 
@@ -55,6 +47,17 @@ This project has been updated to use React Native v73 (the latest at the time of
 ## Usage
 
 All functions that run asynchronously where we have to wait for a result returns Promises that can reject if an error occurred.
+
+> [!TIP]
+> Adding a `postinstall` script to your `package.json` file to run `pod install` after `npm install` is a good idea. The [`pod-install`](https://www.npmjs.com/package/pod-install) package is a good way to do this.
+>
+> ```json
+> {
+>   "scripts": {
+>     "postinstall": "npx pod-install",
+>   }
+> }
+> ```
 
 ### Create a client using password authentication
 
