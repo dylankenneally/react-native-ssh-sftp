@@ -235,7 +235,7 @@ You can find a very simple example app for the usage of this library [here](http
 This package wraps the following libraries, which provide the actual SSH/SFTP functionality:
 
 - [NMSSH](https://github.com/aanah0/NMSSH) for iOS
-- [JSch](http://www.jcraft.com/jsch/) for Android
+- [JSch](http://www.jcraft.com/jsch/) for Android ([from Matthias Wiedemann fork](https://github.com/mwiede/jsch))
 
 This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://github.com/enatividad/react-native-ssh-sftp) package. The fork chain from there is as follows:
 
