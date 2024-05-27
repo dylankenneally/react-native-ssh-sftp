@@ -1,1 +1,1 @@
-pod 'NMSSH', :git => 'https://github.com/speam/NMSSH.git'
+pod 'NMSSH', :git => 'https://github.com/aanah0/NMSSH.git'

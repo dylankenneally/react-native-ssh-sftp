@@ -12,11 +12,11 @@ npm install @dylankenneally/react-native-ssh-sftp
 
 ### iOS
 
-Update your `Podfile` to use the [Stephen Sun's fork](https://github.com/speam/NMSSH) of [NMSSH](https://github.com/NMSSH/NMSSH). Note that we use the forked version to give us a required later version of libssh. Your `Podfile` is located in your React Native project at `./ios/Podfile`.
+Update your `Podfile` to use the [aanah0's fork](https://github.com/aanah0/NMSSH) of [NMSSH](https://github.com/NMSSH/NMSSH). Note that we use the forked version to give us a required later version of libssh. Your `Podfile` is located in your React Native project at `./ios/Podfile`.
 
 ```ruby
 target '[your project's name]' do
-  pod 'NMSSH', :git => 'https://github.com/speam/NMSSH.git' # <-- add this line
+  pod 'NMSSH', :git => 'https://github.com/aanah0/NMSSH.git' # <-- add this line
   # ... rest of your target details ...
 end
 ```
@@ -234,7 +234,7 @@ You can find a very simple example app for the usage of this library [here](http
 
 This package wraps the following libraries, which provide the actual SSH/SFTP functionality:
 
-- [NMSSH](https://github.com/NMSSH/NMSSH) for iOS
+- [NMSSH](https://github.com/aanah0/NMSSH) for iOS
 - [JSch](http://www.jcraft.com/jsch/) for Android
 
 This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://github.com/enatividad/react-native-ssh-sftp) package. The fork chain from there is as follows:
