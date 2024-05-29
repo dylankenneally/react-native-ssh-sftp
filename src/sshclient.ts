@@ -71,6 +71,17 @@ export interface KeyPair {
   passphrase?: string;
 }
 
+export interface genKeyPair {
+  privateKey: string;
+  publicKey?: string;
+}
+
+export interface keyDetail {
+  keyType: string;
+  keySize?: number;
+}
+
+
 /**
  * Represents a password or key for authentication.
  */
@@ -83,6 +94,44 @@ export type PasswordOrKey = string | KeyPair;
  * - SSHClient.connectWithPassword()
  */
 export default class SSHClient {
+  /**
+  * Retrieves the details of an SSH key.
+  * @param key - The SSH private key as a string.
+  * @returns A Promise that resolves to the details of the key, including its type and size.
+  */
+  static getKeyDetails(key: string): Promise<{ keyType: string, keySize: number }> {
+    return new Promise((resolve, reject) => {
+      RNSSHClient.getKeyDetails(key)
+        .then((result: keyDetail) => {
+          /* eslint-disable no-console */
+          console.log(result);
+          /* eslint-enable no-console */
+          resolve({
+            keyType: result.keyType,
+            keySize: result.keySize || 0
+          });
+        })
+        .catch((error: CBError) => {
+          reject(error);
+        });
+    });
+  }
+  static generateKeyPair(type: string, passphrase?: string, keySize?: number, comment?: string): Promise<genKeyPair> {
+    return new Promise((resolve, reject) => {
+      RNSSHClient.generateKeyPair(type, passphrase, keySize, comment, (error: CBError, keys: KeyPair) => {
+
+        if (error) {
+          reject(error);
+        } else {
+          resolve({
+            privateKey: keys.privateKey,
+            publicKey: keys.publicKey,
+          });
+        }
+
+      });
+    });
+  }
   /**
    * Connects to an SSH server using a private key for authentication.
    *
@@ -144,7 +193,7 @@ export default class SSHClient {
   private _key: string;
   private _listeners: Record<string, EmitterSubscription>;
   private _counters: { download: number; upload: number; };
-  private _activeStream: {  sftp: boolean; shell: boolean; };
+  private _activeStream: { sftp: boolean; shell: boolean; };
   private _handlers: Record<string, EventHandler>;
   private host: string;
   private port: number;
