@@ -33,6 +33,8 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+
     api 'com.facebook.react:react-native:+'
     api 'com.github.mwiede:jsch:0.2.17'
     api 'com.fasterxml.jackson.core:jackson-core:2.10.3'
