@@ -1,4 +1,4 @@
-package me.dylankenneally.rnssh;
+package me.wss1.rnssh;
 
 import android.os.Environment;
 import android.util.Log;
@@ -40,6 +40,18 @@ import java.util.Properties;
 import java.util.Vector;
 
 import okhttp3.internal.Util;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.Arguments;
+
+import com.jcraft.jsch.KeyPair;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 
 public class RNSshClientModule extends ReactContextBaseJavaModule {
   private class SSHClient {
@@ -86,6 +98,107 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
   private void connectToHostByKey(final String host, final Integer port, final String username, final ReadableMap passwordOrKey, final String key, final Callback callback) {
     connectToHost(host, port, username, null, passwordOrKey, key, callback);
   }
+  private int getKeyTypeFromString(String type) throws IllegalArgumentException {
+    if (type == null) {
+        throw new IllegalArgumentException("Key type cannot be null");
+    }
+    switch (type.toLowerCase()) {
+        case "dsa":
+            return KeyPair.DSA;
+        case "rsa":
+            return KeyPair.RSA;
+        case "ecdsa":
+            return KeyPair.ECDSA;
+        case "ed25519":
+            return KeyPair.ED25519;
+        case "ed448":
+            return KeyPair.ED448;
+        default:
+            throw new IllegalArgumentException("Unsupported key type: " + type);
+    }
+}
+
+  @ReactMethod
+  public void generateKeyPair(final String type, @Nullable final String passphrase, final int keySize, final String comment, final Callback callback) {
+    new Thread(new Runnable() {
+        public void run() {
+            try {
+                int keyType = getKeyTypeFromString(type); // You'll implement this to translate string to type
+                JSch jsch = new JSch();
+                KeyPair kpair = KeyPair.genKeyPair(jsch, keyType, keySize);
+                
+                // callback.invoke("Finger print: " + kpair.getFingerPrint());
+                ByteArrayOutputStream privateKeyOut = new ByteArrayOutputStream();
+                ByteArrayOutputStream publicKeyOut = new ByteArrayOutputStream();
+                kpair.writePrivateKey(privateKeyOut, passphrase.isEmpty() ? null : passphrase.getBytes());
+                kpair.writePublicKey(publicKeyOut, comment);
+                String privateKeyString = privateKeyOut.toString("UTF-8");
+                String publicKeyString = publicKeyOut.toString("UTF-8");
+                WritableMap keyMap = Arguments.createMap();
+                keyMap.putString("privateKey", privateKeyString);
+                keyMap.putString("publicKey", publicKeyString);
+                callback.invoke(null, keyMap);
+
+                privateKeyOut.close();
+                publicKeyOut.close();
+                kpair.dispose();
+            } catch (Exception e) {
+                Log.e(LOGTAG, "Failed to generate key pair", e);
+                callback.invoke("Failed to generate key pair: " + e.toString());
+            }
+        }
+    }).start();
+}
+
+  @ReactMethod
+  public void getKeyDetails(String privateKey, Promise promise) {
+  File tempPrivateKeyFile = null;
+  try {
+    // Create temporary files for the private and public keys
+    tempPrivateKeyFile = File.createTempFile("temp_private_key", ".pem");
+    tempPrivateKeyFile.deleteOnExit();
+
+    try (FileWriter privateKeyWriter = new FileWriter(tempPrivateKeyFile);) {
+      privateKeyWriter.write(privateKey);
+    }
+
+    JSch jsch = new JSch();
+    KeyPair kpair = KeyPair.load(jsch, tempPrivateKeyFile.getAbsolutePath());
+
+    String keyType;
+    switch (kpair.getKeyType()) {
+      case KeyPair.RSA:
+        keyType = "RSA";
+        break;
+      case KeyPair.DSA:
+        keyType = "DSA";
+        break;
+      case KeyPair.ECDSA:
+        keyType = "ECDSA";
+        break;
+      case KeyPair.ED25519:
+        keyType = "ED25519";
+        break;
+      default:
+        keyType = "UNKNOWN";
+    }
+    int keySize = kpair.getKeySize();
+
+    kpair.dispose();
+
+    WritableMap result = Arguments.createMap();
+    result.putString("keyType", keyType);
+    result.putInt("keySize", keySize);
+    promise.resolve(result);
+  } catch (Exception e) {
+    promise.reject("Error", e.getMessage());
+  } finally {
+    if (tempPrivateKeyFile != null) {
+      tempPrivateKeyFile.delete();
+    }
+  }
+}
+
 
   private void connectToHost(final String host, final Integer port, final String username,final String password, final ReadableMap keyPairs, final String key, final Callback callback) {
     new Thread(new Runnable()  {
