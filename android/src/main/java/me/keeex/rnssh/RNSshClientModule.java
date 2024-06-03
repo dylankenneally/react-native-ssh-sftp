@@ -1,4 +1,4 @@
-package me.wss1.rnssh;
+package me.dylankenneally.rnssh;
 
 import android.os.Environment;
 import android.util.Log;
