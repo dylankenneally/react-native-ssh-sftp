@@ -50,7 +50,7 @@ No additional steps are needed for Android.
 
 ### Linking
 
-This project has been updated to use React Native v73 (the latest at the time of writing, Jan 2024) - which means that manual linking is not required.
+This project has been updated to use React Native v84 (the latest at the time of writing, Feb 2026) - which means that manual linking is not required.
 
 ## Usage
 

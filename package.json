@@ -1,6 +1,6 @@
 {
   "name": "@dylankenneally/react-native-ssh-sftp",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "SSH and SFTP client library for React Native",
   "main": "lib/sshclient.js",
   "scripts": {
@@ -62,19 +62,17 @@
     "RNSSHClient.podspec"
   ],
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.13.1",
-    "@typescript-eslint/parser": "^7.13.1",
-    "cross-env": "^7.0.3",
-    "husky": "^9.0.11",
-    "typescript": "^5.4.5"
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.0.0",
+    "husky": "^9.1.7",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "npm": ">=9.5.0 <=11",
     "node": ">=18.16.0 <=24"
-  },
-  "dependencies": {
-    "-": "^0.0.1",
-    "D": "^1.0.0",
-    "eslint": "^8.57.0"
   }
 }
