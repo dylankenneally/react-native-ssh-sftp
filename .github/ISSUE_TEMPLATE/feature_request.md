@@ -4,7 +4,6 @@ about: Suggest an idea for this project
 title: "[Enhancement request]"
 labels: enhancement, triage
 assignees: dylankenneally
-
 ---
 
 **Is your feature request related to a problem? Please describe.**
