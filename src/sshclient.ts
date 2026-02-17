@@ -232,7 +232,7 @@ export default class SSHClient {
    * @returns A string representing the random client key.
    */
   private static getRandomClientKey(): string {
-    // TODO This should be returned by the native code
+    // TODO This should be returned by the native code...
     // There's no need for actual randomness, just uniqueness.
     return Math.floor((1 + Math.random()) * 0x10000)
       .toString(16)
