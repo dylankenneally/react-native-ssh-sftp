@@ -1,0 +1,109 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "React Native SSH SFTP",
+  "projectDescription": "SSH and SFTP client library for React Native on iOS and Android",
+  "theme": "palm",
+  "primaryColor": "#2E7D32",
+  "lightColor": "#66BB6A",
+  "darkColor": "#1B5E20",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/connection-management",
+              "concepts/error-handling"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/ssh-commands",
+              "guides/interactive-shell",
+              "guides/sftp-operations",
+              "guides/file-transfers",
+              "guides/platform-specific"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Client",
+            "pages": [
+              "api/sshclient",
+              "api/connection-methods"
+            ]
+          },
+          {
+            "group": "SSH Operations",
+            "pages": [
+              "api/ssh/execute",
+              "api/ssh/shell"
+            ]
+          },
+          {
+            "group": "SFTP Operations",
+            "pages": [
+              "api/sftp/connect",
+              "api/sftp/file-operations",
+              "api/sftp/directory-operations",
+              "api/sftp/transfer-operations"
+            ]
+          },
+          {
+            "group": "Types & Interfaces",
+            "pages": [
+              "api/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Password and public key authentication",
+    "SSH command execution",
+    "Interactive shell with PTY support",
+    "SFTP file and directory operations",
+    "File upload and download with progress tracking",
+    "Cross-platform support for iOS and Android"
+  ],
+  "publicApiSurface": [
+    "SSHClient.connectWithPassword()",
+    "SSHClient.connectWithKey()",
+    "SSHClient.generateKeyPair()",
+    "SSHClient.getKeyDetails()",
+    "client.execute()",
+    "client.startShell()",
+    "client.writeToShell()",
+    "client.closeShell()",
+    "client.connectSFTP()",
+    "client.sftpLs()",
+    "client.sftpMkdir()",
+    "client.sftpRmdir()",
+    "client.sftpRm()",
+    "client.sftpRename()",
+    "client.sftpChmod()",
+    "client.sftpUpload()",
+    "client.sftpDownload()",
+    "client.sftpCancelUpload()",
+    "client.sftpCancelDownload()",
+    "client.disconnectSFTP()",
+    "client.disconnect()"
+  ]
+}

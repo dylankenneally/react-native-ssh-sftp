@@ -2,7 +2,19 @@
 
 SSH and SFTP client library for React Native on iOS and Android.
 
-[![Compile package](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml) [![Publish package to npmjs.com](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml)
+[![Compile package](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml) [![Publish package to npmjs.com](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml) [![View documentation](https://img.shields.io/badge/View-documentation-blue)](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app)
+
+## Full documentation
+
+A full set of [documentation is available on Mintlify](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app), which includes:
+
+1. Installation
+1. Quick start guide
+1. API reference
+1. Core concepts
+1. Guides
+
+Below is a quick installation and usage guide to get up and running. The [full documentation](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app) is recommended in addition to the below.
 
 ## Installation
 

@@ -1,0 +1,318 @@
+---
+title: Connection Management
+description: Understand SSH and SFTP connection lifecycle in React Native SSH SFTP
+---
+
+## Connection Lifecycle
+
+The React Native SSH SFTP library manages SSH and SFTP connections through a well-defined lifecycle. Understanding this lifecycle is crucial for proper resource management.
+
+### Creating Connections
+
+Connections are created using factory methods on the `SSHClient` class:
+
+<CodeGroup>
+```typescript Password
+const client = await SSHClient.connectWithPassword(
+  '10.0.0.10',
+  22,
+  'user',
+  'password'
+);
+```
+
+```typescript Key-Based
+const client = await SSHClient.connectWithKey(
+  '10.0.0.10',
+  22,
+  'user',
+  privateKey,
+  passphrase
+);
+```
+</CodeGroup>
+
+<Warning>
+  Do not instantiate `SSHClient` directly using the `new` keyword. Always use the static factory methods `connectWithPassword()` or `connectWithKey()`.
+</Warning>
+
+## SSH vs SFTP Connections
+
+The library maintains separate connection states for SSH and SFTP operations:
+
+- **SSH Connection**: Established when you create a client instance
+- **SFTP Connection**: Established when you first use an SFTP method or explicitly call `connectSFTP()`
+
+### SSH Connection
+
+The SSH connection is automatically established during client creation and allows you to:
+
+- Execute commands via `execute()`
+- Start and interact with shell sessions via `startShell()`, `writeToShell()`
+- Use as a base for SFTP operations
+
+```typescript
+const client = await SSHClient.connectWithPassword(
+  host,
+  port,
+  username,
+  password
+);
+
+// SSH connection is now active
+const output = await client.execute('ls -la');
+console.log(output);
+```
+
+### SFTP Connection
+
+The SFTP connection is established on-demand and allows file transfer operations.
+
+## When to Call connectSFTP()
+
+<Info>
+  **TL;DR**: Calling `connectSFTP()` is **optional**. All SFTP methods automatically establish the connection if needed.
+</Info>
+
+### Automatic Connection
+
+All SFTP methods (`sftpLs`, `sftpDownload`, `sftpUpload`, etc.) automatically call an internal `checkSFTP()` method that establishes the connection if it's not already active:
+
+```typescript
+const client = await SSHClient.connectWithPassword(host, port, username, password);
+
+// No need to call connectSFTP() first
+const files = await client.sftpLs('/home/user');
+```
+
+From the source code (sshclient.ts:446-459):
+
+```typescript
+private checkSFTP<ResultType>(callback?: CallbackFunction<ResultType>): Promise<void> {
+  if (this._activeStream.sftp) {
+    return Promise.resolve();
+  }
+
+  return this.connectSFTP()
+    .catch((error: CBError) => {
+      if (callback) {
+        callback(error);
+      }
+
+      throw error;
+    });
+}
+```
+
+### Explicit Connection
+
+You may want to call `connectSFTP()` explicitly to:
+
+1. **Separate connection from operation**: Establish the connection early to reduce latency on first SFTP operation
+2. **Handle connection errors separately**: Catch connection errors before attempting file operations
+3. **Verify SFTP availability**: Test if SFTP is available on the server
+
+```typescript
+const client = await SSHClient.connectWithPassword(host, port, username, password);
+
+try {
+  // Explicitly establish SFTP connection
+  await client.connectSFTP();
+  console.log('SFTP connection established');
+} catch (error) {
+  console.error('SFTP not available:', error);
+  return;
+}
+
+// Now use SFTP operations
+const files = await client.sftpLs('.');
+```
+
+### Method Signature
+
+```typescript
+connectSFTP(callback?: CallbackFunction<void>): Promise<void>
+```
+
+From the source code (sshclient.ts:418-439):
+
+```typescript
+connectSFTP(callback?: CallbackFunction<void>): Promise<void> {
+  if (this._activeStream.sftp) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    RNSSHClient.connectSFTP(this._key, (error: CBError) => {
+      this._activeStream.sftp = true;
+      this.registerNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+      this.registerNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
+      if (callback) {
+        callback(error);
+      }
+
+      if (error) {
+        return reject(error);
+      }
+
+      resolve();
+    });
+  });
+}
+```
+
+## Disconnecting Properly
+
+Proper disconnection is essential to free up resources and prevent connection leaks.
+
+### Disconnect SFTP
+
+Use `disconnectSFTP()` to close the SFTP connection while keeping the SSH connection active:
+
+```typescript
+client.disconnectSFTP();
+```
+
+<Note>
+  On iOS, `disconnectSFTP()` has limited functionality due to native implementation constraints. The SSH `disconnect()` method will properly close the SFTP stream on all platforms.
+</Note>
+
+From the source code (sshclient.ts:696-707):
+
+```typescript
+disconnectSFTP(): void {
+  // TODO This require a fix in the native part. I don't care.
+  // It actually still work since the native code disconnect() will actually
+  // close the sftp stream.
+  // Only downside is we can't *explicitly* close the sftp channel.
+  if (Platform.OS !== 'ios') {
+    this.unregisterNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+    this.unregisterNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
+    RNSSHClient.disconnectSFTP(this._key);
+    this._activeStream.sftp = false;
+  }
+}
+```
+
+### Disconnect SSH
+
+Use `disconnect()` to close all active connections (shell, SFTP, and SSH):
+
+```typescript
+client.disconnect();
+```
+
+From the source code (sshclient.ts:715-726):
+
+```typescript
+disconnect(): void {
+  if (this._activeStream.shell) {
+    this.closeShell();
+  }
+
+  if (this._activeStream.sftp) {
+    this.disconnectSFTP();
+  }
+
+  // TODO this should use a callback too
+  RNSSHClient.disconnect(this._key);
+}
+```
+
+### Best Practices
+
+<CodeGroup>
+```typescript Complete Cleanup
+// Always disconnect when done
+try {
+  const client = await SSHClient.connectWithPassword(host, port, username, password);
+  
+  // Perform operations
+  await client.execute('ls');
+  const files = await client.sftpLs('.');
+  
+} finally {
+  // Ensure cleanup even if errors occur
+  client.disconnect();
+}
+```
+
+```typescript React useEffect
+import { useEffect, useState } from 'react';
+
+function useSSHClient(host, port, username, password) {
+  const [client, setClient] = useState(null);
+
+  useEffect(() => {
+    let sshClient;
+
+    SSHClient.connectWithPassword(host, port, username, password)
+      .then(client => {
+        sshClient = client;
+        setClient(client);
+      })
+      .catch(console.error);
+
+    // Cleanup on unmount
+    return () => {
+      if (sshClient) {
+        sshClient.disconnect();
+      }
+    };
+  }, [host, port, username, password]);
+
+  return client;
+}
+```
+</CodeGroup>
+
+## Connection State Tracking
+
+The library internally tracks connection states:
+
+```typescript
+private _activeStream: { sftp: boolean; shell: boolean; };
+```
+
+These states are managed automatically:
+
+- `_activeStream.sftp`: Set to `true` when SFTP connects, `false` when disconnected
+- `_activeStream.shell`: Set to `true` when shell starts, `false` when closed
+
+## Shell Session Management
+
+Shell sessions have their own lifecycle separate from SFTP:
+
+```typescript
+// Start shell
+await client.startShell('vanilla');
+
+// Use shell
+client.on('Shell', (data) => console.log(data));
+await client.writeToShell('ls\n');
+
+// Close shell
+client.closeShell();
+```
+
+See the API Reference for complete shell documentation.
+
+## Connection Errors
+
+Connection methods return Promises that reject on failure:
+
+```typescript
+try {
+  const client = await SSHClient.connectWithPassword(
+    'invalid-host',
+    22,
+    'user',
+    'password'
+  );
+} catch (error) {
+  // Handle connection error
+  console.error('Failed to connect:', error);
+}
+```
+
+See [Error Handling](/concepts/error-handling) for comprehensive error handling patterns.

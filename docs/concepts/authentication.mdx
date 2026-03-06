@@ -1,0 +1,215 @@
+---
+title: Authentication
+description: Learn about password and key-based authentication in React Native SSH SFTP
+---
+
+## Authentication Methods
+
+The React Native SSH SFTP library supports two authentication methods: password-based and key-based authentication. Both methods establish a secure SSH connection to your remote server.
+
+### Password Authentication
+
+Password authentication is the simplest method. Use `SSHClient.connectWithPassword()` to connect with username and password credentials.
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+const client = await SSHClient.connectWithPassword(
+  '10.0.0.10',  // host
+  22,           // port
+  'user',       // username
+  'password'    // password
+);
+```
+
+#### Method Signature
+
+```typescript
+static connectWithPassword(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  callback?: CallbackFunction<SSHClient>
+): Promise<SSHClient>
+```
+
+### Key-Based Authentication
+
+Key-based authentication provides stronger security by using SSH key pairs. Use `SSHClient.connectWithKey()` to connect with a private key.
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+const privateKey = '-----BEGIN RSA PRIVATE KEY-----\n...';
+const passphrase = 'optional-passphrase';
+
+const client = await SSHClient.connectWithKey(
+  '10.0.0.10',
+  22,
+  'user',
+  privateKey,
+  passphrase  // optional
+);
+```
+
+#### Method Signature
+
+```typescript
+static connectWithKey(
+  host: string,
+  port: number,
+  username: string,
+  privateKey: string,
+  passphrase?: string,
+  callback?: CallbackFunction<SSHClient>
+): Promise<SSHClient>
+```
+
+## KeyPair Interface
+
+The `KeyPair` interface represents an SSH key pair used for authentication. It contains the private key and optionally the public key and passphrase.
+
+```typescript
+interface KeyPair {
+  privateKey: string;
+  publicKey?: string;
+  passphrase?: string;
+}
+```
+
+### KeyPair Properties
+
+<ParamField path="privateKey" type="string" required>
+  The private key in PEM format (e.g., `-----BEGIN RSA PRIVATE KEY-----`)
+</ParamField>
+
+<ParamField path="publicKey" type="string">
+  The public key in OpenSSH format (e.g., `ssh-rsa AAAAB3NzaC1yc2EA...`)
+</ParamField>
+
+<ParamField path="passphrase" type="string">
+  The passphrase used to encrypt/decrypt the private key
+</ParamField>
+
+## Generating Key Pairs
+
+You can generate SSH key pairs programmatically using the `generateKeyPair()` static method.
+
+```typescript
+const keys = await SSHClient.generateKeyPair(
+  'rsa',      // key type
+  'mypass',   // passphrase (optional)
+  2048,       // key size (optional)
+  'comment'   // comment (optional)
+);
+
+console.log(keys.privateKey);
+console.log(keys.publicKey);
+```
+
+### Method Signature
+
+```typescript
+static generateKeyPair(
+  type: string,
+  passphrase?: string,
+  keySize?: number,
+  comment?: string
+): Promise<genKeyPair>
+```
+
+### Return Type
+
+```typescript
+interface genKeyPair {
+  privateKey: string;
+  publicKey?: string;
+}
+```
+
+## Getting Key Details
+
+Use `getKeyDetails()` to retrieve information about an SSH private key, including its type and size.
+
+```typescript
+const privateKey = '-----BEGIN RSA PRIVATE KEY-----\n...';
+
+const details = await SSHClient.getKeyDetails(privateKey);
+console.log(`Key Type: ${details.keyType}`);
+console.log(`Key Size: ${details.keySize}`);
+```
+
+### Method Signature
+
+```typescript
+static getKeyDetails(
+  key: string
+): Promise<{ keyType: string; keySize: number }>
+```
+
+### Return Type
+
+```typescript
+interface keyDetail {
+  keyType: string;
+  keySize?: number;
+}
+```
+
+## Security Best Practices
+
+<Warning>
+  Never hardcode credentials or private keys in your application code. Always load them from secure storage.
+</Warning>
+
+### Recommendations
+
+1. **Use Key-Based Authentication**: Prefer key-based authentication over passwords for better security
+2. **Protect Private Keys**: Store private keys in secure storage (e.g., iOS Keychain, Android Keystore)
+3. **Use Passphrases**: Always encrypt private keys with strong passphrases
+4. **Rotate Keys Regularly**: Implement a key rotation policy for long-lived applications
+5. **Validate Connections**: Always handle connection errors and validate the server's identity when possible
+
+### Secure Storage Example
+
+```typescript
+import * as SecureStore from 'expo-secure-store';
+
+// Store private key securely
+await SecureStore.setItemAsync('ssh_private_key', privateKey);
+
+// Retrieve and use
+const storedKey = await SecureStore.getItemAsync('ssh_private_key');
+const client = await SSHClient.connectWithKey(
+  host,
+  port,
+  username,
+  storedKey!
+);
+```
+
+<Note>
+  The example above uses `expo-secure-store`, but you should use the appropriate secure storage solution for your platform and framework.
+</Note>
+
+## Authentication Error Handling
+
+Both authentication methods return Promises that reject on error. Always implement proper error handling:
+
+```typescript
+try {
+  const client = await SSHClient.connectWithPassword(
+    host,
+    port,
+    username,
+    password
+  );
+  // Connection successful
+} catch (error) {
+  console.error('Authentication failed:', error);
+  // Handle authentication error
+}
+```
+
+See [Error Handling](/concepts/error-handling) for more details on handling connection and authentication errors.

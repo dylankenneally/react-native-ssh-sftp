@@ -1,0 +1,376 @@
+---
+title: SFTP Operations
+description: Learn how to perform SFTP operations including listing, creating, and removing directories
+---
+
+SFTP (SSH File Transfer Protocol) provides secure file transfer capabilities over SSH. This guide covers directory operations and file management using the React Native SSH SFTP library.
+
+## Connecting to SFTP
+
+While not strictly required, you can explicitly connect to the SFTP subsystem:
+
+```javascript
+await client.connectSFTP();
+```
+
+<Note>
+  The SFTP connection is established automatically when you call any SFTP method (like `sftpLs()`, `sftpUpload()`, etc.), so calling `connectSFTP()` explicitly is optional.
+</Note>
+
+## Listing Directories
+
+Use `sftpLs()` to list files and directories:
+
+```javascript
+const files = await client.sftpLs('/home/user');
+console.log(files);
+```
+
+### Understanding the Response
+
+The `sftpLs()` method returns an array of `LsResult` objects with detailed file information:
+
+```typescript
+interface LsResult {
+  filename: string;           // Name of the file or directory
+  isDirectory: boolean;       // true if it's a directory
+  modificationDate: string;   // Last modification timestamp
+  lastAccess: string;         // Last access timestamp
+  fileSize: number;           // Size in bytes
+  ownerUserID: number;        // Owner's user ID
+  ownerGroupID: number;       // Owner's group ID
+  flags: number;              // File flags/permissions
+}
+```
+
+### Practical Examples
+
+<Tabs>
+  <Tab title="List Current Directory">
+    ```javascript
+    // List files in current directory (user's home)
+    const files = await client.sftpLs('.');
+    
+    files.forEach(file => {
+      const type = file.isDirectory ? 'DIR' : 'FILE';
+      console.log(`${type}: ${file.filename} (${file.fileSize} bytes)`);
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Filter Files">
+    ```javascript
+    const files = await client.sftpLs('/var/www');
+    
+    // Get only directories
+    const directories = files.filter(f => f.isDirectory);
+    
+    // Get only files
+    const regularFiles = files.filter(f => !f.isDirectory);
+    
+    // Get files larger than 1MB
+    const largeFiles = files.filter(f => f.fileSize > 1024 * 1024);
+    
+    // Get recently modified files (last 24 hours)
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    const recentFiles = files.filter(f => 
+      new Date(f.modificationDate).getTime() > oneDayAgo
+    );
+    ```
+  </Tab>
+  
+  <Tab title="Sort Results">
+    ```javascript
+    const files = await client.sftpLs('/documents');
+    
+    // Sort by size (largest first)
+    const bySize = [...files].sort((a, b) => b.fileSize - a.fileSize);
+    
+    // Sort by modification date (newest first)
+    const byDate = [...files].sort((a, b) => 
+      new Date(b.modificationDate).getTime() - 
+      new Date(a.modificationDate).getTime()
+    );
+    
+    // Sort alphabetically
+    const byName = [...files].sort((a, b) => 
+      a.filename.localeCompare(b.filename)
+    );
+    ```
+  </Tab>
+  
+  <Tab title="Format Output">
+    ```javascript
+    const files = await client.sftpLs('/home/user');
+    
+    const formatSize = (bytes) => {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let size = bytes;
+      let unitIndex = 0;
+      
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+      }
+      
+      return `${size.toFixed(2)} ${units[unitIndex]}`;
+    };
+    
+    files.forEach(file => {
+      const icon = file.isDirectory ? '📁' : '📄';
+      const size = formatSize(file.fileSize);
+      const date = new Date(file.modificationDate).toLocaleDateString();
+      
+      console.log(`${icon} ${file.filename.padEnd(30)} ${size.padStart(10)} ${date}`);
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Creating Directories
+
+Create a new directory on the remote server:
+
+```javascript
+await client.sftpMkdir('/home/user/new-folder');
+console.log('Directory created successfully');
+```
+
+<Warning>
+  `sftpMkdir()` will fail if:
+  - The directory already exists
+  - The parent directory doesn't exist
+  - You don't have write permissions
+</Warning>
+
+### Creating Nested Directories
+
+To create nested directories, you need to create each level individually:
+
+```javascript
+const createNestedDirectory = async (client, path) => {
+  const parts = path.split('/').filter(p => p);
+  let currentPath = '';
+  
+  for (const part of parts) {
+    currentPath += '/' + part;
+    
+    try {
+      await client.sftpMkdir(currentPath);
+      console.log(`Created: ${currentPath}`);
+    } catch (error) {
+      // Directory might already exist, check with sftpLs
+      const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
+      const files = await client.sftpLs(parent);
+      const exists = files.some(f => 
+        f.filename === part && f.isDirectory
+      );
+      
+      if (!exists) {
+        throw error; // Re-throw if it's not an "already exists" error
+      }
+    }
+  }
+};
+
+// Usage
+await createNestedDirectory(client, '/home/user/path/to/deep/folder');
+```
+
+## Removing Directories
+
+Remove an empty directory:
+
+```javascript
+await client.sftpRmdir('/home/user/old-folder');
+console.log('Directory removed');
+```
+
+<Warning>
+  `sftpRmdir()` only removes **empty** directories. To remove a directory with contents, you must first delete all files and subdirectories.
+</Warning>
+
+### Removing Directory Recursively
+
+Here's a helper function to remove a directory and all its contents:
+
+```javascript
+const removeDirectoryRecursive = async (client, path) => {
+  const files = await client.sftpLs(path);
+  
+  for (const file of files) {
+    // Skip . and .. entries
+    if (file.filename === '.' || file.filename === '..') {
+      continue;
+    }
+    
+    const filePath = `${path}/${file.filename}`;
+    
+    if (file.isDirectory) {
+      // Recursively remove subdirectory
+      await removeDirectoryRecursive(client, filePath);
+    } else {
+      // Remove file
+      await client.sftpRm(filePath);
+      console.log(`Deleted file: ${filePath}`);
+    }
+  }
+  
+  // Remove the now-empty directory
+  await client.sftpRmdir(path);
+  console.log(`Deleted directory: ${path}`);
+};
+
+// Usage
+await removeDirectoryRecursive(client, '/home/user/temp-folder');
+```
+
+## File Operations
+
+### Removing Files
+
+Delete a single file:
+
+```javascript
+await client.sftpRm('/home/user/document.txt');
+console.log('File removed');
+```
+
+### Renaming Files and Directories
+
+Rename or move files and directories:
+
+```javascript
+// Rename a file
+await client.sftpRename(
+  '/home/user/old-name.txt',
+  '/home/user/new-name.txt'
+);
+
+// Move a file to different directory
+await client.sftpRename(
+  '/home/user/file.txt',
+  '/home/user/documents/file.txt'
+);
+
+// Rename a directory
+await client.sftpRename(
+  '/home/user/old-folder',
+  '/home/user/new-folder'
+);
+```
+
+## Changing File Permissions (Android Only)
+
+<Note>
+  The `sftpChmod()` method is only available on Android.
+</Note>
+
+Change file or directory permissions using octal notation:
+
+```javascript
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'android') {
+  // Make file readable and writable by owner only (0600)
+  await client.sftpChmod('/home/user/private.txt', 0o600);
+  
+  // Make directory accessible to everyone (0755)
+  await client.sftpChmod('/home/user/public', 0o755);
+  
+  // Make file executable (0755)
+  await client.sftpChmod('/home/user/script.sh', 0o755);
+}
+```
+
+### Common Permission Values
+
+| Octal | Binary | Description |
+|-------|--------|-------------|
+| 0644 | rw-r--r-- | Standard file permissions (owner read/write, others read) |
+| 0755 | rwxr-xr-x | Standard directory/executable permissions |
+| 0600 | rw------- | Private file (owner read/write only) |
+| 0700 | rwx------ | Private directory (owner access only) |
+| 0666 | rw-rw-rw- | World-writable file |
+| 0777 | rwxrwxrwx | World-writable directory |
+
+## Error Handling
+
+All SFTP operations return promises that reject on error:
+
+```javascript
+try {
+  const files = await client.sftpLs('/restricted');
+  console.log(files);
+} catch (error) {
+  console.error('Failed to list directory:', error);
+  // Handle permission denied, path not found, etc.
+}
+```
+
+## Disconnecting SFTP
+
+Explicitly close the SFTP connection:
+
+```javascript
+client.disconnectSFTP();
+```
+
+<Note>
+  - Disconnecting SFTP will unregister upload/download progress listeners
+  - The SSH connection remains active after disconnecting SFTP
+  - On iOS, `disconnectSFTP()` has limited functionality; use `disconnect()` to close both SSH and SFTP
+</Note>
+
+## Best Practices
+
+<Steps>
+  <Step title="Check before operations">
+    Use `sftpLs()` to verify paths exist before performing operations:
+    
+    ```javascript
+    const files = await client.sftpLs('/home/user');
+    const exists = files.some(f => f.filename === 'target-folder');
+    
+    if (!exists) {
+      await client.sftpMkdir('/home/user/target-folder');
+    }
+    ```
+  </Step>
+  
+  <Step title="Handle errors gracefully">
+    Different errors require different handling strategies:
+    
+    ```javascript
+    try {
+      await client.sftpRmdir(path);
+    } catch (error) {
+      if (error.message.includes('not empty')) {
+        console.log('Directory contains files, use recursive delete');
+      } else if (error.message.includes('permission')) {
+        console.log('Insufficient permissions');
+      } else {
+        console.error('Unknown error:', error);
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Use absolute paths">
+    Always use absolute paths when possible to avoid confusion:
+    
+    ```javascript
+    // Good
+    await client.sftpLs('/home/user/documents');
+    
+    // Less reliable (depends on current directory)
+    await client.sftpLs('documents');
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+- Learn about [file uploads and downloads](/guides/file-transfers) with progress tracking
+- Explore [SSH command execution](/guides/ssh-commands) for system operations
+- Check [platform-specific considerations](/guides/platform-specific) for iOS and Android differences

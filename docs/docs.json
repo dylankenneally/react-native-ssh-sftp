@@ -1,0 +1,95 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "React Native SSH SFTP",
+  "theme": "palm",
+  "colors": {
+    "primary": "#2E7D32",
+    "light": "#66BB6A",
+    "dark": "#1B5E20"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/dylankenneally/react-native-ssh-sftp"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/dylankenneally/react-native-ssh-sftp"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/connection-management",
+              "concepts/error-handling"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/ssh-commands",
+              "guides/interactive-shell",
+              "guides/sftp-operations",
+              "guides/file-transfers",
+              "guides/platform-specific"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Client",
+            "pages": [
+              "api/sshclient",
+              "api/connection-methods"
+            ]
+          },
+          {
+            "group": "SSH Operations",
+            "pages": [
+              "api/ssh/execute",
+              "api/ssh/shell"
+            ]
+          },
+          {
+            "group": "SFTP Operations",
+            "pages": [
+              "api/sftp/connect",
+              "api/sftp/file-operations",
+              "api/sftp/directory-operations",
+              "api/sftp/transfer-operations"
+            ]
+          },
+          {
+            "group": "Types & Interfaces",
+            "pages": [
+              "api/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "description": "SSH and SFTP client library for React Native",
+  "appearance": {
+    "strict": false,
+    "default": "system"
+  }
+}

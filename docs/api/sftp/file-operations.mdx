@@ -1,0 +1,204 @@
+---
+title: 'SFTP File Operations'
+description: 'Manage files on remote servers using SFTP'
+---
+
+## sftpRm()
+
+Removes (unlinks) a file from the remote server using SFTP.
+
+### Signature
+
+```typescript
+sftpRm(path: string, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="path" type="string" required>
+  The path of the file to remove on the remote server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to handle the result or error.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the file is successfully removed, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+try {
+  await client.sftpRm('/home/user/file.txt');
+  console.log('File removed successfully');
+} catch (error) {
+  console.error('Failed to remove file:', error);
+}
+
+// Using callback
+client.sftpRm('/home/user/file.txt', (error) => {
+  if (error) {
+    console.error('Failed to remove file:', error);
+    return;
+  }
+  console.log('File removed successfully');
+});
+```
+
+---
+
+## sftpRename()
+
+Renames a file or directory on the remote server using SFTP.
+
+### Signature
+
+```typescript
+sftpRename(oldPath: string, newPath: string, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="oldPath" type="string" required>
+  The current path of the file or directory on the remote server.
+</ParamField>
+
+<ParamField path="newPath" type="string" required>
+  The new path to rename the file or directory to.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to handle the result or error.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the file or directory is successfully renamed, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+try {
+  await client.sftpRename(
+    '/home/user/old-name.txt',
+    '/home/user/new-name.txt'
+  );
+  console.log('File renamed successfully');
+} catch (error) {
+  console.error('Failed to rename file:', error);
+}
+
+// Using callback
+client.sftpRename(
+  '/home/user/old-name.txt',
+  '/home/user/new-name.txt',
+  (error) => {
+    if (error) {
+      console.error('Failed to rename file:', error);
+      return;
+    }
+    console.log('File renamed successfully');
+  }
+);
+```
+
+---
+
+## sftpChmod()
+
+Changes the permissions of a file or directory on the remote server using SFTP.
+
+<Warning>
+  This method is only available on Android. It will not work on iOS.
+</Warning>
+
+### Signature
+
+```typescript
+sftpChmod(path: string, permissions: number, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="path" type="string" required>
+  The path of the file or directory on the remote server.
+</ParamField>
+
+<ParamField path="permissions" type="number" required>
+  The new permissions to set in octal format (e.g., `0o755` or `493`).
+  
+  Common permission values:
+  - `0o755` (493): Read, write, execute for owner; read and execute for group and others
+  - `0o644` (420): Read and write for owner; read-only for group and others
+  - `0o600` (384): Read and write for owner only
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to handle the result or error.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the permissions are successfully changed, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise with octal notation
+try {
+  await client.sftpChmod('/home/user/script.sh', 0o755);
+  console.log('Permissions changed successfully');
+} catch (error) {
+  console.error('Failed to change permissions:', error);
+}
+
+// Using Promise with decimal notation
+try {
+  await client.sftpChmod('/home/user/file.txt', 644);
+  console.log('Permissions changed successfully');
+} catch (error) {
+  console.error('Failed to change permissions:', error);
+}
+
+// Using callback
+client.sftpChmod('/home/user/script.sh', 0o755, (error) => {
+  if (error) {
+    console.error('Failed to change permissions:', error);
+    return;
+  }
+  console.log('Permissions changed successfully');
+});
+```
+
+### Platform Notes
+
+- **Android**: Fully supported
+- **iOS**: Not supported

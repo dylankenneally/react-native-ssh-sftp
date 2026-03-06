@@ -1,0 +1,420 @@
+---
+title: Error Handling
+description: Best practices for handling errors in React Native SSH SFTP
+---
+
+## Promise Rejection Patterns
+
+All asynchronous operations in the React Native SSH SFTP library return Promises that reject when errors occur. This provides a consistent error handling pattern across the API.
+
+### Basic Error Handling
+
+Use try/catch blocks with async/await:
+
+```typescript
+try {
+  const client = await SSHClient.connectWithPassword(
+    '10.0.0.10',
+    22,
+    'user',
+    'password'
+  );
+  const output = await client.execute('ls -la');
+  console.log(output);
+} catch (error) {
+  console.error('Operation failed:', error);
+}
+```
+
+Or use `.catch()` with Promises:
+
+```typescript
+SSHClient.connectWithPassword('10.0.0.10', 22, 'user', 'password')
+  .then(client => client.execute('ls -la'))
+  .then(output => console.log(output))
+  .catch(error => console.error('Operation failed:', error));
+```
+
+## Error Types
+
+The library uses a generic error type from the native modules:
+
+```typescript
+type CBError = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+```
+
+Errors can originate from:
+
+1. **Connection errors**: Network issues, authentication failures, timeouts
+2. **SFTP errors**: File not found, permission denied, disk full
+3. **SSH command errors**: Command execution failures, shell errors
+4. **Native module errors**: Platform-specific errors from iOS/Android implementations
+
+## Common Errors
+
+### Authentication Errors
+
+Occur when credentials are invalid or key-based authentication fails:
+
+```typescript
+try {
+  const client = await SSHClient.connectWithPassword(
+    host,
+    port,
+    'wronguser',
+    'wrongpass'
+  );
+} catch (error) {
+  // Common authentication errors:
+  // - Invalid credentials
+  // - Account locked
+  // - SSH service not available
+  console.error('Authentication failed:', error);
+}
+```
+
+### Connection Errors
+
+Occur when the client cannot establish a connection:
+
+```typescript
+try {
+  const client = await SSHClient.connectWithKey(
+    'unreachable-host.example.com',
+    22,
+    'user',
+    privateKey
+  );
+} catch (error) {
+  // Common connection errors:
+  // - Host unreachable
+  // - Connection timeout
+  // - Connection refused
+  // - Network unreachable
+  console.error('Connection failed:', error);
+}
+```
+
+### SFTP Errors
+
+Occur during file transfer operations:
+
+```typescript
+try {
+  await client.sftpDownload('/nonexistent/file.txt', '/local/path/');
+} catch (error) {
+  // Common SFTP errors:
+  // - File not found
+  // - Permission denied
+  // - Disk full
+  // - Directory doesn't exist
+  console.error('SFTP operation failed:', error);
+}
+```
+
+### Command Execution Errors
+
+Occur when SSH commands fail:
+
+```typescript
+try {
+  const output = await client.execute('invalid-command');
+} catch (error) {
+  // Common command errors:
+  // - Command not found
+  // - Permission denied
+  // - Command returned non-zero exit code
+  console.error('Command execution failed:', error);
+}
+```
+
+## Error Handling Best Practices
+
+### 1. Always Handle Errors
+
+<Warning>
+  Never ignore Promise rejections. Always implement error handling for all asynchronous operations.
+</Warning>
+
+```typescript
+// Bad: No error handling
+const client = await SSHClient.connectWithPassword(host, port, user, pass);
+const output = await client.execute('rm -rf /');
+
+// Good: Comprehensive error handling
+try {
+  const client = await SSHClient.connectWithPassword(host, port, user, pass);
+  const output = await client.execute('ls');
+  console.log(output);
+} catch (error) {
+  console.error('Operation failed:', error);
+  // Implement recovery logic
+}
+```
+
+### 2. Clean Up Resources on Error
+
+Always disconnect clients, even when errors occur:
+
+```typescript
+let client;
+try {
+  client = await SSHClient.connectWithPassword(host, port, username, password);
+  await client.execute('some-command');
+  await client.sftpUpload(localFile, remoteFile);
+} catch (error) {
+  console.error('Error during operations:', error);
+  // Handle error
+} finally {
+  // Always cleanup
+  if (client) {
+    client.disconnect();
+  }
+}
+```
+
+### 3. Separate Connection and Operation Errors
+
+Handle connection errors separately from operation errors:
+
+```typescript
+let client;
+
+try {
+  // Connection phase
+  client = await SSHClient.connectWithPassword(host, port, username, password);
+} catch (error) {
+  console.error('Failed to connect:', error);
+  // Show connection error to user
+  return;
+}
+
+try {
+  // Operation phase
+  const files = await client.sftpLs('/home/user');
+  await client.sftpDownload('/home/user/file.txt', '/local/path/');
+} catch (error) {
+  console.error('Operation failed:', error);
+  // Show operation error to user
+} finally {
+  client.disconnect();
+}
+```
+
+### 4. Provide User-Friendly Error Messages
+
+Translate technical errors into user-friendly messages:
+
+```typescript
+function getErrorMessage(error: any): string {
+  const errorStr = String(error).toLowerCase();
+  
+  if (errorStr.includes('authentication')) {
+    return 'Invalid username or password';
+  }
+  if (errorStr.includes('timeout') || errorStr.includes('unreachable')) {
+    return 'Cannot reach server. Check your connection.';
+  }
+  if (errorStr.includes('permission')) {
+    return 'Permission denied. Check file permissions.';
+  }
+  if (errorStr.includes('not found')) {
+    return 'File or directory not found';
+  }
+  
+  return 'An unexpected error occurred. Please try again.';
+}
+
+try {
+  const client = await SSHClient.connectWithPassword(host, port, user, pass);
+  await client.execute('ls');
+} catch (error) {
+  const message = getErrorMessage(error);
+  Alert.alert('Error', message);
+}
+```
+
+### 5. Implement Retry Logic
+
+For transient errors, implement retry with exponential backoff:
+
+```typescript
+async function connectWithRetry(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  maxRetries = 3
+): Promise<SSHClient> {
+  let lastError;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await SSHClient.connectWithPassword(host, port, username, password);
+    } catch (error) {
+      lastError = error;
+      console.log(`Connection attempt ${i + 1} failed, retrying...`);
+      
+      // Exponential backoff: 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+    }
+  }
+  
+  throw lastError;
+}
+
+// Usage
+try {
+  const client = await connectWithRetry(host, port, username, password);
+} catch (error) {
+  console.error('Failed after retries:', error);
+}
+```
+
+### 6. Handle File Transfer Cancellation
+
+Properly handle cancelled uploads and downloads:
+
+```typescript
+const client = await SSHClient.connectWithPassword(host, port, username, password);
+
+let uploadInProgress = false;
+
+const startUpload = async () => {
+  uploadInProgress = true;
+  try {
+    await client.sftpUpload(localFile, remoteFile);
+    console.log('Upload completed');
+  } catch (error) {
+    if (uploadInProgress) {
+      // Upload failed
+      console.error('Upload failed:', error);
+    } else {
+      // Upload was cancelled
+      console.log('Upload cancelled');
+    }
+  } finally {
+    uploadInProgress = false;
+  }
+};
+
+const cancelUpload = () => {
+  uploadInProgress = false;
+  client.sftpCancelUpload();
+};
+```
+
+### 7. Log Errors for Debugging
+
+Implement comprehensive error logging:
+
+```typescript
+function logError(context: string, error: any) {
+  console.error(`[${context}] Error:`, {
+    message: error.message || String(error),
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+try {
+  const client = await SSHClient.connectWithPassword(host, port, username, password);
+  await client.execute('ls');
+} catch (error) {
+  logError('SSH Connection', error);
+  throw error;
+}
+```
+
+## Using Callbacks (Alternative Pattern)
+
+The library also supports callback-based error handling:
+
+```typescript
+SSHClient.connectWithPassword(
+  host,
+  port,
+  username,
+  password,
+  (error) => {
+    if (error) {
+      console.error('Connection failed:', error);
+      return;
+    }
+    console.log('Connected successfully');
+  }
+).then(client => {
+  // Use client
+}).catch(error => {
+  // Also handle Promise rejection
+});
+```
+
+<Note>
+  While callbacks are supported, using async/await with try/catch is the recommended approach for cleaner, more maintainable code.
+</Note>
+
+## React Native Specific Considerations
+
+### Network State
+
+Check network connectivity before attempting connections:
+
+```typescript
+import NetInfo from '@react-native-community/netinfo';
+
+const state = await NetInfo.fetch();
+if (!state.isConnected) {
+  throw new Error('No network connection');
+}
+
+const client = await SSHClient.connectWithPassword(host, port, username, password);
+```
+
+### Error Boundaries
+
+Use React Error Boundaries to catch errors in components:
+
+```typescript
+class SSHErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('SSH Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorScreen error={this.state.error} />;
+    }
+    return this.props.children;
+  }
+}
+```
+
+## Platform-Specific Errors
+
+### iOS Simulator Limitation
+
+<Warning>
+  The library does not currently support the iOS simulator. Always test on physical iOS devices.
+</Warning>
+
+```typescript
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'ios' && __DEV__) {
+  // Warn users in development
+  console.warn('iOS simulator is not supported. Use a physical device.');
+}
+```
+
+## Next Steps
+
+- Review [Authentication](/concepts/authentication) for credential handling
+- Learn about [Connection Management](/concepts/connection-management) for proper lifecycle management
+- Explore the [API Reference](/api/sshclient) for complete method documentation

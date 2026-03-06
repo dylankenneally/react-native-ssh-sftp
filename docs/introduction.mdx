@@ -1,0 +1,75 @@
+---
+title: Introduction
+description: SSH and SFTP client library for React Native on iOS and Android
+---
+
+# React Native SSH SFTP
+
+A powerful SSH and SFTP client library for React Native applications, providing seamless connectivity to remote servers on both iOS and Android platforms.
+
+<Note>
+On iOS, this package currently doesn't support the simulator. You will need to run your app on a physical device. See [this issue](https://github.com/dylankenneally/react-native-ssh-sftp/issues/20) for more details.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Authentication Methods" icon="key">
+    Support for both password-based and public key authentication with optional passphrase protection
+  </Card>
+  <Card title="SSH Command Execution" icon="terminal">
+    Execute remote commands and receive output with full promise-based API
+  </Card>
+  <Card title="Interactive Shell Sessions" icon="window">
+    Start and manage interactive shell sessions with support for multiple PTY types (vanilla, vt100, vt102, vt220, ansi, xterm)
+  </Card>
+  <Card title="Full SFTP Support" icon="folder">
+    Complete file transfer capabilities including upload, download, directory operations, and progress tracking
+  </Card>
+  <Card title="Cross-Platform" icon="mobile">
+    Works on both iOS (using NMSSH) and Android (using JSch) with a unified API
+  </Card>
+  <Card title="TypeScript Support" icon="code">
+    Fully typed API with comprehensive interfaces and type definitions
+  </Card>
+</CardGroup>
+
+## What You Can Build
+
+With this library, you can build React Native applications that:
+
+- Execute remote commands on SSH servers
+- Transfer files securely using SFTP
+- Manage remote file systems (create, delete, rename files and directories)
+- Monitor file transfer progress in real-time
+- Maintain interactive shell sessions
+- Connect using password or key-based authentication
+
+## Get Started
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the library and configure your project for iOS and Android
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with a simple example in minutes
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/sshclient">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Platform Support
+
+This library wraps proven SSH/SFTP implementations:
+
+- **iOS**: [NMSSH](https://github.com/aanah0/NMSSH) (aanah0's fork with updated libssh)
+- **Android**: [JSch](http://www.jcraft.com/jsch/) (Matthias Wiedemann fork)
+
+## Requirements
+
+- React Native 0.60 or later (supports autolinking)
+- iOS physical device (simulator not supported)
+- Android: No additional requirements
+- Node.js 18.16.0 or later
+- npm 9.5.0 or later

@@ -1,0 +1,94 @@
+---
+title: 'SFTP Connection'
+description: 'Connect and disconnect from SFTP servers'
+---
+
+## connectSFTP()
+
+Connects to the SFTP server.
+
+<Info>
+  It is not mandatory to call this method before calling any SFTP method. The library will automatically establish an SFTP connection when needed.
+</Info>
+
+### Signature
+
+```typescript
+connectSFTP(callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to be called after the connection is established.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the connection is established successfully, or rejects with an error if the connection fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+await client.connectSFTP();
+console.log('SFTP connected');
+
+// Using callback
+client.connectSFTP((error) => {
+  if (error) {
+    console.error('SFTP connection failed:', error);
+    return;
+  }
+  console.log('SFTP connected');
+});
+```
+
+---
+
+## disconnectSFTP()
+
+Disconnects the SFTP connection.
+
+<Warning>
+  On iOS, this method has limited functionality. The SFTP stream will be closed when the SSH connection is disconnected using `disconnect()`.
+</Warning>
+
+### Signature
+
+```typescript
+disconnectSFTP(): void
+```
+
+### Parameters
+
+None
+
+### Returns
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Disconnect SFTP
+client.disconnectSFTP();
+console.log('SFTP disconnected');
+```
+
+### Platform Notes
+
+- **Android**: Fully supported. Explicitly closes the SFTP channel.
+- **iOS**: The SFTP stream will be closed when `disconnect()` is called on the SSH client.

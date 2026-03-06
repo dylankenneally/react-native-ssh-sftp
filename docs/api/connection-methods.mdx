@@ -1,0 +1,284 @@
+---
+title: 'Connection Methods'
+description: 'Static factory methods for creating SSH connections and managing keys'
+---
+
+## Connection Factory Methods
+
+### connectWithPassword
+
+Connects to an SSH server using password authentication.
+
+```typescript
+static connectWithPassword(
+  host: string,
+  port: number,
+  username: string,
+  password: string,
+  callback?: CallbackFunction<SSHClient>
+): Promise<SSHClient>
+```
+
+#### Parameters
+
+<ParamField path="host" type="string" required>
+  The hostname or IP address of the SSH server.
+</ParamField>
+
+<ParamField path="port" type="number" required>
+  The port number of the SSH server (typically 22).
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  The username for authentication.
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  The password for authentication.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<SSHClient>">
+  Optional callback function to handle any errors during the connection process.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Promise<SSHClient>" type="Promise<SSHClient>">
+  A Promise that resolves to an instance of `SSHClient` if the connection is successful.
+</ResponseField>
+
+#### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+try {
+  const client = await SSHClient.connectWithPassword(
+    'example.com',
+    22,
+    'username',
+    'password'
+  );
+  console.log('Connected successfully');
+} catch (error) {
+  console.error('Connection failed:', error);
+}
+```
+
+---
+
+### connectWithKey
+
+Connects to an SSH server using a private key for authentication.
+
+```typescript
+static connectWithKey(
+  host: string,
+  port: number,
+  username: string,
+  privateKey: string,
+  passphrase?: string,
+  callback?: CallbackFunction<SSHClient>
+): Promise<SSHClient>
+```
+
+#### Parameters
+
+<ParamField path="host" type="string" required>
+  The hostname or IP address of the SSH server.
+</ParamField>
+
+<ParamField path="port" type="number" required>
+  The port number of the SSH server (typically 22).
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  The username for authentication.
+</ParamField>
+
+<ParamField path="privateKey" type="string" required>
+  The private key for authentication in PEM format.
+</ParamField>
+
+<ParamField path="passphrase" type="string">
+  The passphrase for the private key (optional). Required if the private key is encrypted.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<SSHClient>">
+  A callback function to handle the connection result (optional).
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Promise<SSHClient>" type="Promise<SSHClient>">
+  A Promise that resolves to an instance of `SSHClient` if the connection is successful. Otherwise, it rejects with an error.
+</ResponseField>
+
+#### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+const privateKey = `-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----`;
+
+try {
+  const client = await SSHClient.connectWithKey(
+    'example.com',
+    22,
+    'username',
+    privateKey,
+    'passphrase' // Optional
+  );
+  console.log('Connected successfully');
+} catch (error) {
+  console.error('Connection failed:', error);
+}
+```
+
+---
+
+## Key Management Methods
+
+### generateKeyPair
+
+Generates a new SSH key pair for authentication.
+
+```typescript
+static generateKeyPair(
+  type: string,
+  passphrase?: string,
+  keySize?: number,
+  comment?: string
+): Promise<genKeyPair>
+```
+
+#### Parameters
+
+<ParamField path="type" type="string" required>
+  The type of key to generate (e.g., 'rsa', 'ed25519', 'ecdsa').
+</ParamField>
+
+<ParamField path="passphrase" type="string">
+  Optional passphrase to encrypt the private key.
+</ParamField>
+
+<ParamField path="keySize" type="number">
+  Optional key size in bits (e.g., 2048, 4096 for RSA). Defaults vary by key type.
+</ParamField>
+
+<ParamField path="comment" type="string">
+  Optional comment to include with the key pair.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Promise<genKeyPair>" type="Promise<genKeyPair>">
+  A Promise that resolves to an object containing the generated key pair.
+
+  ```typescript
+  interface genKeyPair {
+    privateKey: string;
+    publicKey?: string;
+  }
+  ```
+</ResponseField>
+
+#### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+try {
+  const keyPair = await SSHClient.generateKeyPair(
+    'rsa',
+    'my-passphrase',
+    4096,
+    'user@example.com'
+  );
+  
+  console.log('Private Key:', keyPair.privateKey);
+  console.log('Public Key:', keyPair.publicKey);
+} catch (error) {
+  console.error('Key generation failed:', error);
+}
+```
+
+---
+
+### getKeyDetails
+
+Retrieves the details of an SSH private key.
+
+```typescript
+static getKeyDetails(
+  key: string
+): Promise<{ keyType: string; keySize: number }>
+```
+
+#### Parameters
+
+<ParamField path="key" type="string" required>
+  The SSH private key as a string in PEM format.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Promise<keyDetail>" type="Promise<{ keyType: string; keySize: number }>">
+  A Promise that resolves to the details of the key.
+
+  **Properties:**
+  - `keyType` (string): The type of the key (e.g., 'RSA', 'ED25519', 'ECDSA')
+  - `keySize` (number): The size of the key in bits
+</ResponseField>
+
+#### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+const privateKey = `-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----`;
+
+try {
+  const details = await SSHClient.getKeyDetails(privateKey);
+  console.log('Key Type:', details.keyType);
+  console.log('Key Size:', details.keySize);
+} catch (error) {
+  console.error('Failed to get key details:', error);
+}
+```
+
+## Types
+
+### CallbackFunction
+
+```typescript
+type CallbackFunction<T> = (error: any, response?: T) => void
+```
+
+Represents a callback function with an optional response.
+
+### genKeyPair
+
+```typescript
+interface genKeyPair {
+  privateKey: string;
+  publicKey?: string;
+}
+```
+
+Represents the result of generating a key pair.
+
+### keyDetail
+
+```typescript
+interface keyDetail {
+  keyType: string;
+  keySize?: number;
+}
+```
+
+Represents the details of an SSH key.

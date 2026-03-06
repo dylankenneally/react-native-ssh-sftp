@@ -1,0 +1,125 @@
+---
+title: Installation
+description: Install and configure React Native SSH SFTP for iOS and Android
+---
+
+# Installation
+
+This guide will walk you through installing the React Native SSH SFTP library and configuring it for both iOS and Android platforms.
+
+## Install the Package
+
+Install the library using your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm install @dylankenneally/react-native-ssh-sftp
+```
+
+```bash yarn
+yarn add @dylankenneally/react-native-ssh-sftp
+```
+
+```bash pnpm
+pnpm add @dylankenneally/react-native-ssh-sftp
+```
+</CodeGroup>
+
+## iOS Setup
+
+<Steps>
+  <Step title="Update your Podfile">
+    The library requires a specific fork of NMSSH that includes an updated version of libssh. Add the following line to your `Podfile` located at `./ios/Podfile`:
+
+    ```ruby ios/Podfile
+    target 'YourProjectName' do
+      pod 'NMSSH', :git => 'https://github.com/aanah0/NMSSH.git'
+      # ... rest of your target details ...
+    end
+    ```
+
+    <Info>
+    We use [aanah0's fork](https://github.com/aanah0/NMSSH) of NMSSH to get a required later version of libssh.
+    </Info>
+  </Step>
+
+  <Step title="Install pods">
+    Run pod install in your iOS directory:
+
+    ```bash
+    cd ios
+    pod install
+    cd ..
+    ```
+  </Step>
+
+  <Step title="Optional: Automate pod installation">
+    Add a `postinstall` script to your `package.json` to automatically run `pod install` after `npm install`:
+
+    ```json package.json
+    {
+      "scripts": {
+        "postinstall": "npx pod-install"
+      }
+    }
+    ```
+
+    <Tip>
+    The [`pod-install`](https://www.npmjs.com/package/pod-install) package is a cross-platform way to handle iOS pod installation.
+    </Tip>
+  </Step>
+</Steps>
+
+### Troubleshooting iOS
+
+<Warning>
+**Having OpenSSL issues on iOS?**
+
+If you are using [Flipper](https://fbflipper.com/) to debug your app, it already includes a copy of OpenSSL which can conflict with the version used by NMSSH. 
+
+To resolve this, disable Flipper by removing or commenting out the following line in your `Podfile`:
+
+```ruby
+# flipper_configuration => flipper_config,
+```
+</Warning>
+
+<Note>
+**iOS Simulator Not Supported**
+
+This package currently doesn't support the iOS simulator. You will need to test on a physical iOS device. See [this issue](https://github.com/dylankenneally/react-native-ssh-sftp/issues/20) for more information.
+</Note>
+
+## Android Setup
+
+No additional configuration is required for Android. The library works out of the box after installation.
+
+<Info>
+The Android implementation uses [JSch](http://www.jcraft.com/jsch/) (from the Matthias Wiedemann fork) for SSH/SFTP functionality.
+</Info>
+
+## Linking
+
+This library uses React Native autolinking (introduced in React Native 0.60+). Manual linking is **not required**.
+
+<Info>
+If you're using React Native 0.60 or later, the library will be automatically linked. Simply rebuild your app after installation.
+</Info>
+
+## Verification
+
+After installation, rebuild your app:
+
+<CodeGroup>
+```bash iOS
+npx react-native run-ios --device "Your Device Name"
+```
+
+```bash Android
+npx react-native run-android
+```
+</CodeGroup>
+
+## Next Steps
+
+Now that you have the library installed, check out the [Quick Start](/quickstart) guide to learn how to connect to an SSH server and execute your first command.

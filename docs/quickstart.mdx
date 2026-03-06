@@ -1,0 +1,156 @@
+---
+title: Quickstart
+description: Get up and running with React Native SSH SFTP in minutes
+---
+
+This guide will help you connect to an SSH server and execute your first command in just a few minutes.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- Completed the [installation](/installation) steps
+- An SSH server you can connect to (hostname, port, username, and password or private key)
+- A React Native project set up and running
+
+## Connect and execute a command
+
+Follow these steps to establish your first SSH connection and run a command.
+
+<Steps>
+  <Step title="Import the library">
+    Import the SSHClient class into your React Native component:
+
+    ```typescript
+    import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+    ```
+  </Step>
+
+  <Step title="Connect to your server">
+    Use either password or key-based authentication to connect:
+
+    <Tabs>
+      <Tab title="Password Authentication">
+        ```typescript
+        const client = await SSHClient.connectWithPassword(
+          "10.0.0.10",    // host
+          22,             // port
+          "username",     // username
+          "password"      // password
+        );
+        ```
+      </Tab>
+      <Tab title="Private Key Authentication">
+        ```typescript
+        const privateKey = "-----BEGIN RSA PRIVATE KEY-----\n...";
+        const passphrase = "optional-passphrase"; // optional
+
+        const client = await SSHClient.connectWithKey(
+          "10.0.0.10",    // host
+          22,             // port
+          "username",     // username
+          privateKey,     // private key
+          passphrase      // passphrase (optional)
+        );
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Execute a command">
+    Run a command on the remote server:
+
+    ```typescript
+    const output = await client.execute('ls -la');
+    console.log(output);
+    ```
+  </Step>
+
+  <Step title="Clean up">
+    Always disconnect when you're done:
+
+    ```typescript
+    client.disconnect();
+    ```
+  </Step>
+</Steps>
+
+## Complete example
+
+Here's a full React component that connects to an SSH server and executes a command:
+
+```typescript
+import React, { useState } from 'react';
+import { View, Button, Text, ScrollView } from 'react-native';
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+export default function SSHExample() {
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState('');
+
+  const runSSHCommand = async () => {
+    let client;
+    try {
+      // Connect to the server
+      client = await SSHClient.connectWithPassword(
+        "10.0.0.10",
+        22,
+        "username",
+        "password"
+      );
+
+      // Execute a command
+      const result = await client.execute('uname -a');
+      setOutput(result);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+      setOutput('');
+    } finally {
+      // Always disconnect
+      if (client) {
+        client.disconnect();
+      }
+    }
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Button title="Run SSH Command" onPress={runSSHCommand} />
+      
+      {output && (
+        <ScrollView style={{ marginTop: 20, padding: 10, backgroundColor: '#f0f0f0' }}>
+          <Text style={{ fontFamily: 'monospace' }}>{output}</Text>
+        </ScrollView>
+      )}
+      
+      {error && (
+        <Text style={{ color: 'red', marginTop: 10 }}>Error: {error}</Text>
+      )}
+    </View>
+  );
+}
+```
+
+<Note>
+This example uses password authentication for simplicity. In production, consider using key-based authentication for better security.
+</Note>
+
+## Next steps
+
+Now that you've successfully connected and executed a command, explore more features:
+
+<CardGroup cols={2}>
+  <Card title="Interactive Shell" icon="terminal" href="/guides/interactive-shell">
+    Learn how to create interactive shell sessions
+  </Card>
+  <Card title="SFTP Operations" icon="folder" href="/guides/sftp-operations">
+    Transfer files and manage directories
+  </Card>
+  <Card title="Authentication" icon="key" href="/concepts/authentication">
+    Understand authentication methods and key management
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/sshclient">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

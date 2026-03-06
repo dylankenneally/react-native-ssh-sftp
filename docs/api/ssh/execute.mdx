@@ -1,0 +1,79 @@
+---
+title: 'execute()'
+description: 'Execute a command on the SSH server'
+---
+
+## Overview
+
+Executes a command on the connected SSH server and returns the output.
+
+## Method Signature
+
+```typescript
+execute(command: string, callback?: CallbackFunction<string>): Promise<string>
+```
+
+## Parameters
+
+<ParamField path="command" type="string" required>
+  The command to execute on the SSH server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<string>" optional>
+  Optional callback function to handle the result asynchronously.
+
+  **Type Definition:**
+  ```typescript
+  type CallbackFunction<T> = (error: any, response?: T) => void
+  ```
+
+  The callback receives:
+  - `error`: Error object if the operation fails, otherwise `null` or `undefined`
+  - `response`: The command output as a string (only present on success)
+</ParamField>
+
+## Return Value
+
+<ResponseField name="Promise<string>" type="Promise<string>">
+  Returns a Promise that resolves with the command output from the server.
+
+  - **Resolves**: With the response string containing the command output
+  - **Rejects**: With an error if the command execution fails
+</ResponseField>
+
+## Usage Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+const client = await SSHClient.connectWithPassword(
+  'example.com',
+  22,
+  'username',
+  'password'
+);
+
+try {
+  const output = await client.execute('ls -la /home');
+  console.log('Command output:', output);
+} catch (error) {
+  console.error('Execution failed:', error);
+}
+
+// Using callback
+client.execute('pwd', (error, response) => {
+  if (error) {
+    console.error('Execution failed:', error);
+    return;
+  }
+  console.log('Current directory:', response);
+});
+```
+
+## Notes
+
+- The command is executed in a non-interactive session
+- Each call to `execute()` creates a new execution context
+- For interactive shell sessions, use [startShell()](/api/ssh/shell) instead
+- The method returns the combined stdout/stderr output from the command

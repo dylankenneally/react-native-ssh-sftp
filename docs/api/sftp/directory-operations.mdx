@@ -1,0 +1,277 @@
+---
+title: 'SFTP Directory Operations'
+description: 'Manage directories on remote servers using SFTP'
+---
+
+## sftpLs()
+
+Lists the files and directories in the specified path using SFTP.
+
+### Signature
+
+```typescript
+sftpLs(path: string, callback?: CallbackFunction<LsResult[]>): Promise<LsResult[]>
+```
+
+### Parameters
+
+<ParamField path="path" type="string" required>
+  The path to list on the remote server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<LsResult[]>" optional>
+  Optional callback function to handle the result asynchronously.
+  
+  ```typescript
+  (error: any, response?: LsResult[]) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<LsResult[]>">
+  A promise that resolves to an array of `LsResult` objects representing the files and directories in the specified path.
+</ResponseField>
+
+### LsResult Type
+
+```typescript
+interface LsResult {
+  filename: string;
+  isDirectory: boolean;
+  modificationDate: string;
+  lastAccess: string;
+  fileSize: number;
+  ownerUserID: number;
+  ownerGroupID: number;
+  flags: number;
+}
+```
+
+<ResponseField name="filename" type="string">
+  The name of the file or directory.
+</ResponseField>
+
+<ResponseField name="isDirectory" type="boolean">
+  Whether the item is a directory (`true`) or a file (`false`).
+</ResponseField>
+
+<ResponseField name="modificationDate" type="string">
+  The last modification date of the file or directory.
+</ResponseField>
+
+<ResponseField name="lastAccess" type="string">
+  The last access date of the file or directory.
+</ResponseField>
+
+<ResponseField name="fileSize" type="number">
+  The size of the file in bytes. For directories, this may be `0` or the block size.
+</ResponseField>
+
+<ResponseField name="ownerUserID" type="number">
+  The user ID of the file or directory owner.
+</ResponseField>
+
+<ResponseField name="ownerGroupID" type="number">
+  The group ID of the file or directory owner.
+</ResponseField>
+
+<ResponseField name="flags" type="number">
+  File permission flags.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+try {
+  const files = await client.sftpLs('/home/user');
+  files.forEach((file) => {
+    console.log(`${file.isDirectory ? 'DIR' : 'FILE'}: ${file.filename}`);
+    console.log(`  Size: ${file.fileSize} bytes`);
+    console.log(`  Modified: ${file.modificationDate}`);
+  });
+} catch (error) {
+  console.error('Failed to list directory:', error);
+}
+
+// Using callback
+client.sftpLs('/home/user', (error, files) => {
+  if (error) {
+    console.error('Failed to list directory:', error);
+    return;
+  }
+  files?.forEach((file) => {
+    console.log(`${file.isDirectory ? 'DIR' : 'FILE'}: ${file.filename}`);
+  });
+});
+
+// Filter only directories
+const files = await client.sftpLs('/home/user');
+const directories = files.filter((file) => file.isDirectory);
+console.log('Directories:', directories.map((d) => d.filename));
+```
+
+---
+
+## sftpMkdir()
+
+Creates a directory on the remote server using SFTP.
+
+### Signature
+
+```typescript
+sftpMkdir(path: string, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="path" type="string" required>
+  The path of the directory to create on the remote server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to handle the result.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the directory is created successfully, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+try {
+  await client.sftpMkdir('/home/user/new-directory');
+  console.log('Directory created successfully');
+} catch (error) {
+  console.error('Failed to create directory:', error);
+}
+
+// Using callback
+client.sftpMkdir('/home/user/new-directory', (error) => {
+  if (error) {
+    console.error('Failed to create directory:', error);
+    return;
+  }
+  console.log('Directory created successfully');
+});
+
+// Create nested directories (may require multiple calls)
+async function createNestedDir(client: SSHClient, path: string) {
+  const parts = path.split('/').filter(Boolean);
+  let currentPath = '';
+  
+  for (const part of parts) {
+    currentPath += '/' + part;
+    try {
+      await client.sftpMkdir(currentPath);
+    } catch (error) {
+      // Directory might already exist
+      console.log(`Path ${currentPath} already exists or error:`, error);
+    }
+  }
+}
+
+await createNestedDir(client, '/home/user/path/to/nested/dir');
+```
+
+---
+
+## sftpRmdir()
+
+Removes a directory on the remote server using SFTP.
+
+<Warning>
+  The directory must be empty before it can be removed. If the directory contains files or subdirectories, the operation will fail.
+</Warning>
+
+### Signature
+
+```typescript
+sftpRmdir(path: string, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="path" type="string" required>
+  The path of the directory to remove on the remote server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to handle the result or error.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the directory is successfully removed, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Using Promise
+try {
+  await client.sftpRmdir('/home/user/empty-directory');
+  console.log('Directory removed successfully');
+} catch (error) {
+  console.error('Failed to remove directory:', error);
+}
+
+// Using callback
+client.sftpRmdir('/home/user/empty-directory', (error) => {
+  if (error) {
+    console.error('Failed to remove directory:', error);
+    return;
+  }
+  console.log('Directory removed successfully');
+});
+
+// Remove directory with contents (recursive deletion)
+async function removeDirectoryRecursive(
+  client: SSHClient,
+  path: string
+): Promise<void> {
+  const files = await client.sftpLs(path);
+  
+  // Remove all files and subdirectories first
+  for (const file of files) {
+    const fullPath = `${path}/${file.filename}`;
+    
+    if (file.isDirectory) {
+      await removeDirectoryRecursive(client, fullPath);
+    } else {
+      await client.sftpRm(fullPath);
+    }
+  }
+  
+  // Remove the now-empty directory
+  await client.sftpRmdir(path);
+}
+
+// Usage
+try {
+  await removeDirectoryRecursive(client, '/home/user/directory-with-files');
+  console.log('Directory and all contents removed');
+} catch (error) {
+  console.error('Failed to remove directory:', error);
+}
+```

@@ -1,0 +1,343 @@
+---
+title: 'SFTP Transfer Operations'
+description: 'Upload and download files with progress tracking'
+---
+
+## sftpUpload()
+
+Uploads a file from the local file system to the remote file system using SFTP.
+
+### Signature
+
+```typescript
+sftpUpload(localFilePath: string, remoteFilePath: string, callback?: CallbackFunction<void>): Promise<void>
+```
+
+### Parameters
+
+<ParamField path="localFilePath" type="string" required>
+  The path of the file on the local file system to upload.
+</ParamField>
+
+<ParamField path="remoteFilePath" type="string" required>
+  The destination path of the file on the remote server.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<void>" optional>
+  Optional callback function to be called after the upload is complete or an error occurs.
+  
+  ```typescript
+  (error: any, response?: void) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<void>">
+  A promise that resolves when the upload is complete, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+import { Platform } from 'react-native';
+
+// Using Promise
+try {
+  const localPath = Platform.OS === 'ios'
+    ? '/var/mobile/Containers/Data/Application/.../Documents/file.txt'
+    : '/data/user/0/com.yourapp/files/file.txt';
+  
+  await client.sftpUpload(localPath, '/home/user/file.txt');
+  console.log('File uploaded successfully');
+} catch (error) {
+  console.error('Failed to upload file:', error);
+}
+
+// Using callback
+client.sftpUpload(
+  '/path/to/local/file.txt',
+  '/home/user/file.txt',
+  (error) => {
+    if (error) {
+      console.error('Failed to upload file:', error);
+      return;
+    }
+    console.log('File uploaded successfully');
+  }
+);
+
+// With progress tracking
+client.on('UploadProgress', (progress) => {
+  console.log(`Upload progress: ${progress.percent}%`);
+  console.log(`Uploaded: ${progress.transferred}/${progress.total} bytes`);
+});
+
+await client.sftpUpload('/path/to/local/file.txt', '/home/user/file.txt');
+```
+
+---
+
+## sftpCancelUpload()
+
+Cancels the ongoing SFTP upload.
+
+### Signature
+
+```typescript
+sftpCancelUpload(): void
+```
+
+### Parameters
+
+None
+
+### Returns
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Start upload
+const uploadPromise = client.sftpUpload(
+  '/path/to/large-file.zip',
+  '/home/user/large-file.zip'
+);
+
+// Cancel upload after 5 seconds
+setTimeout(() => {
+  client.sftpCancelUpload();
+  console.log('Upload cancelled');
+}, 5000);
+
+try {
+  await uploadPromise;
+} catch (error) {
+  console.error('Upload failed or cancelled:', error);
+}
+```
+
+---
+
+## sftpDownload()
+
+Downloads a file from the remote server using SFTP.
+
+### Signature
+
+```typescript
+sftpDownload(remoteFilePath: string, localFilePath: string, callback?: CallbackFunction<string>): Promise<string>
+```
+
+### Parameters
+
+<ParamField path="remoteFilePath" type="string" required>
+  The path of the file on the remote server to download.
+</ParamField>
+
+<ParamField path="localFilePath" type="string" required>
+  The destination path where the file will be saved locally.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<string>" optional>
+  Optional callback function to handle the result of the download.
+  
+  ```typescript
+  (error: any, response?: string) => void
+  ```
+</ParamField>
+
+### Returns
+
+<ResponseField name="Promise" type="Promise<string>">
+  A promise that resolves with the local file path when the download is complete, or rejects with an error if the operation fails.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+import RNFS from 'react-native-fs';
+
+// Using Promise
+try {
+  const localPath = `${RNFS.DocumentDirectoryPath}/downloaded-file.txt`;
+  const result = await client.sftpDownload(
+    '/home/user/file.txt',
+    localPath
+  );
+  console.log('File downloaded to:', result);
+} catch (error) {
+  console.error('Failed to download file:', error);
+}
+
+// Using callback
+client.sftpDownload(
+  '/home/user/file.txt',
+  '/path/to/local/file.txt',
+  (error, localPath) => {
+    if (error) {
+      console.error('Failed to download file:', error);
+      return;
+    }
+    console.log('File downloaded to:', localPath);
+  }
+);
+
+// With progress tracking
+client.on('DownloadProgress', (progress) => {
+  console.log(`Download progress: ${progress.percent}%`);
+  console.log(`Downloaded: ${progress.transferred}/${progress.total} bytes`);
+});
+
+const localPath = `${RNFS.DocumentDirectoryPath}/file.txt`;
+await client.sftpDownload('/home/user/file.txt', localPath);
+```
+
+---
+
+## sftpCancelDownload()
+
+Cancels the ongoing SFTP download operation.
+
+### Signature
+
+```typescript
+sftpCancelDownload(): void
+```
+
+### Parameters
+
+None
+
+### Returns
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+### Example
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+
+// Start download
+const downloadPromise = client.sftpDownload(
+  '/home/user/large-file.zip',
+  '/path/to/local/large-file.zip'
+);
+
+// Cancel download after 5 seconds
+setTimeout(() => {
+  client.sftpCancelDownload();
+  console.log('Download cancelled');
+}, 5000);
+
+try {
+  await downloadPromise;
+} catch (error) {
+  console.error('Download failed or cancelled:', error);
+}
+```
+
+---
+
+## Progress Events
+
+Both upload and download operations emit progress events that you can listen to using the `on()` method.
+
+### UploadProgress Event
+
+Emitted during file upload operations.
+
+```typescript
+client.on('UploadProgress', (progress: {
+  percent: number;
+  transferred: number;
+  total: number;
+}) => {
+  console.log(`Upload: ${progress.percent}% complete`);
+});
+```
+
+### DownloadProgress Event
+
+Emitted during file download operations.
+
+```typescript
+client.on('DownloadProgress', (progress: {
+  percent: number;
+  transferred: number;
+  total: number;
+}) => {
+  console.log(`Download: ${progress.percent}% complete`);
+});
+```
+
+### Complete Example with Progress Tracking
+
+```typescript
+import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+import { useState } from 'react';
+
+function FileTransfer() {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
+  const handleUpload = async (client: SSHClient) => {
+    // Listen for upload progress
+    client.on('UploadProgress', (progress) => {
+      setUploadProgress(progress.percent);
+      console.log(
+        `Uploading: ${progress.transferred}/${progress.total} bytes (${progress.percent}%)`
+      );
+    });
+
+    try {
+      await client.sftpUpload(
+        '/path/to/local/file.zip',
+        '/home/user/file.zip'
+      );
+      console.log('Upload complete!');
+      setUploadProgress(100);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleDownload = async (client: SSHClient) => {
+    // Listen for download progress
+    client.on('DownloadProgress', (progress) => {
+      setDownloadProgress(progress.percent);
+      console.log(
+        `Downloading: ${progress.transferred}/${progress.total} bytes (${progress.percent}%)`
+      );
+    });
+
+    try {
+      await client.sftpDownload(
+        '/home/user/file.zip',
+        '/path/to/local/file.zip'
+      );
+      console.log('Download complete!');
+      setDownloadProgress(100);
+    } catch (error) {
+      console.error('Download failed:', error);
+      setDownloadProgress(0);
+    }
+  };
+
+  return (
+    // Your UI components showing progress bars
+    // uploadProgress and downloadProgress state variables
+    null
+  );
+}
+```

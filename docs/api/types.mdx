@@ -1,0 +1,307 @@
+---
+title: 'Types & Interfaces'
+description: 'Type definitions and interfaces for the React Native SSH SFTP library'
+---
+
+## Overview
+
+This page documents all exported types and interfaces from the React Native SSH SFTP library. These types provide strong type safety for TypeScript users and define the data structures used throughout the library.
+
+## Enums
+
+### PtyType
+
+Represents the types of PTY (pseudo-terminal) for SSH connections.
+
+```typescript
+enum PtyType {
+  VANILLA = 'vanilla',
+  VT100 = 'vt100',
+  VT102 = 'vt102',
+  VT220 = 'vt220',
+  ANSI = 'ansi',
+  XTERM = 'xterm',
+}
+```
+
+**Values:**
+
+| Value | Description |
+|-------|-------------|
+| `VANILLA` | Basic vanilla terminal type |
+| `VT100` | VT100 terminal emulation |
+| `VT102` | VT102 terminal emulation |
+| `VT220` | VT220 terminal emulation |
+| `ANSI` | ANSI terminal emulation |
+| `XTERM` | XTerm terminal emulation |
+
+**Usage:**
+
+```typescript
+import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+// Start a shell with VT100 terminal type
+await client.startShell(PtyType.VT100);
+```
+
+## Interfaces
+
+### KeyPair
+
+Represents a key pair used for SSH authentication.
+
+```typescript
+interface KeyPair {
+  privateKey: string;
+  publicKey?: string;
+  passphrase?: string;
+}
+```
+
+**Properties:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `privateKey` | `string` | Yes | The private key in PEM format |
+| `publicKey` | `string` | No | The public key (optional) |
+| `passphrase` | `string` | No | The passphrase for the encrypted private key (optional) |
+
+**Usage:**
+
+```typescript
+const keyPair: KeyPair = {
+  privateKey: '-----BEGIN RSA PRIVATE KEY-----\n...',
+  passphrase: 'my-secret-passphrase'
+};
+
+await SSHClient.connectWithKey(
+  'example.com',
+  22,
+  'username',
+  keyPair.privateKey,
+  keyPair.passphrase
+);
+```
+
+### LsResult
+
+Represents the result of a directory listing operation.
+
+```typescript
+interface LsResult {
+  filename: string;
+  isDirectory: boolean;
+  modificationDate: string;
+  lastAccess: string;
+  fileSize: number;
+  ownerUserID: number;
+  ownerGroupID: number;
+  flags: number;
+}
+```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `filename` | `string` | The name of the file or directory |
+| `isDirectory` | `boolean` | Whether the item is a directory |
+| `modificationDate` | `string` | The last modification date |
+| `lastAccess` | `string` | The last access date |
+| `fileSize` | `number` | The size of the file in bytes |
+| `ownerUserID` | `number` | The user ID of the owner |
+| `ownerGroupID` | `number` | The group ID of the owner |
+| `flags` | `number` | File permission flags |
+
+**Usage:**
+
+```typescript
+const files: LsResult[] = await client.sftpLs('/home/user');
+
+files.forEach(file => {
+  console.log(`${file.filename} - ${file.isDirectory ? 'DIR' : 'FILE'}`);
+  console.log(`Size: ${file.fileSize} bytes`);
+  console.log(`Modified: ${file.modificationDate}`);
+});
+```
+
+### genKeyPair
+
+Represents the result of a key pair generation operation.
+
+```typescript
+interface genKeyPair {
+  privateKey: string;
+  publicKey?: string;
+}
+```
+
+**Properties:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `privateKey` | `string` | Yes | The generated private key in PEM format |
+| `publicKey` | `string` | No | The generated public key (optional) |
+
+**Usage:**
+
+```typescript
+const keys: genKeyPair = await SSHClient.generateKeyPair(
+  'rsa',
+  'passphrase',
+  2048,
+  'comment'
+);
+
+console.log('Private Key:', keys.privateKey);
+console.log('Public Key:', keys.publicKey);
+```
+
+### keyDetail
+
+Represents the details of an SSH key.
+
+```typescript
+interface keyDetail {
+  keyType: string;
+  keySize?: number;
+}
+```
+
+**Properties:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `keyType` | `string` | Yes | The type of the key (e.g., 'RSA', 'DSA', 'ECDSA') |
+| `keySize` | `number` | No | The size of the key in bits (optional) |
+
+**Usage:**
+
+```typescript
+const details: keyDetail = await SSHClient.getKeyDetails(privateKey);
+
+console.log(`Key Type: ${details.keyType}`);
+console.log(`Key Size: ${details.keySize} bits`);
+```
+
+## Type Aliases
+
+### PasswordOrKey
+
+Represents a password or key for authentication. Can be either a string (password) or a KeyPair object.
+
+```typescript
+type PasswordOrKey = string | KeyPair;
+```
+
+**Usage:**
+
+This type is used internally by the SSHClient constructor to accept either password or key-based authentication:
+
+```typescript
+// Using with password (string)
+const password: PasswordOrKey = 'my-password';
+
+// Using with key (KeyPair)
+const key: PasswordOrKey = {
+  privateKey: '-----BEGIN RSA PRIVATE KEY-----\n...',
+  passphrase: 'passphrase'
+};
+```
+
+### CallbackFunction
+
+Represents a callback function with an optional response.
+
+```typescript
+type CallbackFunction<T> = (error: any, response?: T) => void;
+```
+
+**Type Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `T` | The type of the response object |
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `error` | `any` | The error object, if any error occurred |
+| `response` | `T` | The response object, if the operation was successful (optional) |
+
+**Usage:**
+
+```typescript
+// Callback with string response
+const callback: CallbackFunction<string> = (error, response) => {
+  if (error) {
+    console.error('Error:', error);
+    return;
+  }
+  console.log('Response:', response);
+};
+
+await client.execute('ls -la', callback);
+
+// Callback with void response
+const voidCallback: CallbackFunction<void> = (error) => {
+  if (error) {
+    console.error('Error:', error);
+    return;
+  }
+  console.log('Operation completed');
+};
+
+await client.sftpMkdir('/home/user/newdir', voidCallback);
+```
+
+### EventHandler
+
+Represents an event handler function for SSH events.
+
+```typescript
+type EventHandler = (value: any) => void;
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `value` | `any` | The value passed to the event handler |
+
+**Usage:**
+
+```typescript
+// Register shell event handler
+const shellHandler: EventHandler = (data) => {
+  console.log('Shell output:', data);
+};
+
+client.on('Shell', shellHandler);
+
+// Register download progress handler
+const downloadHandler: EventHandler = (progress) => {
+  console.log('Download progress:', progress);
+};
+
+client.on('DownloadProgress', downloadHandler);
+
+// Register upload progress handler
+const uploadHandler: EventHandler = (progress) => {
+  console.log('Upload progress:', progress);
+};
+
+client.on('UploadProgress', uploadHandler);
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="SSHClient Class" icon="terminal" href="/api/sshclient">
+    Complete API reference for the SSHClient class
+  </Card>
+  <Card title="Static Methods" icon="bolt" href="/api/connection-methods">
+    Static methods for connecting and key generation
+  </Card>
+</CardGroup>

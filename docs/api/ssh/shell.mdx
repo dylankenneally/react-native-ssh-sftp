@@ -1,0 +1,292 @@
+---
+title: 'Shell Operations'
+description: 'Interactive shell session management'
+---
+
+## Overview
+
+Manage interactive shell sessions on the SSH server, allowing you to start shells, write commands, and handle shell output through events.
+
+## startShell()
+
+Starts an interactive shell session on the SSH server.
+
+### Method Signature
+
+```typescript
+startShell(ptyType: PtyType, callback?: CallbackFunction<string>): Promise<string>
+```
+
+### Parameters
+
+<ParamField path="ptyType" type="PtyType" required>
+  The type of pseudo-terminal to use for the shell session.
+
+  **PtyType Enum Values:**
+  ```typescript
+  enum PtyType {
+    VANILLA = 'vanilla',
+    VT100 = 'vt100',
+    VT102 = 'vt102',
+    VT220 = 'vt220',
+    ANSI = 'ansi',
+    XTERM = 'xterm'
+  }
+  ```
+
+  - `VANILLA`: Basic terminal without special control sequences
+  - `VT100`: DEC VT100 terminal emulation
+  - `VT102`: DEC VT102 terminal emulation
+  - `VT220`: DEC VT220 terminal emulation
+  - `ANSI`: ANSI standard terminal
+  - `XTERM`: XTerm terminal emulation (most common)
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<string>" optional>
+  Optional callback function to handle the response.
+
+  **Type Definition:**
+  ```typescript
+  type CallbackFunction<T> = (error: any, response?: T) => void
+  ```
+</ParamField>
+
+### Return Value
+
+<ResponseField name="Promise<string>" type="Promise<string>">
+  Returns a Promise that resolves with the initial shell response.
+
+  - **Resolves**: With the initial output from the shell session
+  - **Rejects**: With an error if the shell session fails to start
+  - **Note**: If a shell is already active, returns an empty string
+</ResponseField>
+
+### Usage Example
+
+```typescript
+import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+const client = await SSHClient.connectWithPassword(
+  'example.com',
+  22,
+  'username',
+  'password'
+);
+
+// Start a shell session
+try {
+  const response = await client.startShell(PtyType.XTERM);
+  console.log('Shell started:', response);
+} catch (error) {
+  console.error('Failed to start shell:', error);
+}
+```
+
+---
+
+## writeToShell()
+
+Writes a command to the active shell session.
+
+### Method Signature
+
+```typescript
+writeToShell(command: string, callback?: CallbackFunction<string>): Promise<string>
+```
+
+### Parameters
+
+<ParamField path="command" type="string" required>
+  The command to write to the shell.
+</ParamField>
+
+<ParamField path="callback" type="CallbackFunction<string>" optional>
+  Optional callback function to handle the response.
+
+  **Type Definition:**
+  ```typescript
+  type CallbackFunction<T> = (error: any, response?: T) => void
+  ```
+</ParamField>
+
+### Return Value
+
+<ResponseField name="Promise<string>" type="Promise<string>">
+  Returns a Promise that resolves with the response from the shell.
+
+  - **Resolves**: With the shell output after executing the command
+  - **Rejects**: With an error if the write operation fails
+</ResponseField>
+
+### Usage Example
+
+```typescript
+// Write commands to the shell
+try {
+  const response1 = await client.writeToShell('cd /var/log');
+  console.log('Response:', response1);
+
+  const response2 = await client.writeToShell('ls -la');
+  console.log('Directory listing:', response2);
+} catch (error) {
+  console.error('Shell write failed:', error);
+}
+```
+
+### Notes
+
+- Automatically starts a shell session with `PtyType.VANILLA` if one is not already active
+- Commands are executed in the context of the active shell session
+- State is maintained between calls (e.g., directory changes persist)
+
+---
+
+## closeShell()
+
+Closes the active SSH shell session.
+
+### Method Signature
+
+```typescript
+closeShell(): void
+```
+
+### Parameters
+
+None.
+
+### Return Value
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+### Usage Example
+
+```typescript
+// Close the shell when done
+client.closeShell();
+console.log('Shell session closed');
+```
+
+### Notes
+
+- Unregisters the 'Shell' event listener
+- Sets the internal shell active state to false
+- Should be called when you no longer need the shell session
+
+---
+
+## Shell Event
+
+The 'Shell' event is emitted during shell operations to provide real-time output.
+
+### Event Handler
+
+Register a handler to receive shell output:
+
+```typescript
+client.on('Shell', (data: any) => {
+  console.log('Shell output:', data);
+});
+```
+
+### Event Handler Type
+
+```typescript
+type EventHandler = (value: any) => void
+```
+
+### Parameters
+
+<ParamField path="value" type="any">
+  The shell output data received from the server.
+</ParamField>
+
+### Usage Example
+
+```typescript
+import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+const client = await SSHClient.connectWithPassword(
+  'example.com',
+  22,
+  'username',
+  'password'
+);
+
+// Register shell event handler
+client.on('Shell', (data) => {
+  console.log('Real-time shell output:', data);
+});
+
+// Start shell and execute commands
+await client.startShell(PtyType.XTERM);
+await client.writeToShell('top');
+
+// Clean up
+client.closeShell();
+```
+
+### Notes
+
+- The 'Shell' event listener is automatically registered when calling `startShell()`
+- The event provides real-time output from the shell session
+- The listener is automatically unregistered when calling `closeShell()`
+
+---
+
+## PtyType Enum
+
+Defines the types of pseudo-terminals (PTY) available for SSH shell connections.
+
+### Enum Definition
+
+```typescript
+enum PtyType {
+  VANILLA = 'vanilla',
+  VT100 = 'vt100',
+  VT102 = 'vt102',
+  VT220 = 'vt220',
+  ANSI = 'ansi',
+  XTERM = 'xterm'
+}
+```
+
+### Values
+
+<ParamField path="VANILLA" type="'vanilla'">
+  Basic terminal type without special control sequences. Use for simple command execution.
+</ParamField>
+
+<ParamField path="VT100" type="'vt100'">
+  DEC VT100 terminal emulation. Classic terminal type with basic cursor control.
+</ParamField>
+
+<ParamField path="VT102" type="'vt102'">
+  DEC VT102 terminal emulation. Enhanced version of VT100 with additional features.
+</ParamField>
+
+<ParamField path="VT220" type="'vt220'">
+  DEC VT220 terminal emulation. Advanced terminal type with extended capabilities.
+</ParamField>
+
+<ParamField path="ANSI" type="'ansi'">
+  ANSI standard terminal. Supports ANSI escape sequences for colors and formatting.
+</ParamField>
+
+<ParamField path="XTERM" type="'xterm'">
+  XTerm terminal emulation. Most widely supported modern terminal type. **Recommended for most use cases.**
+</ParamField>
+
+### Usage Example
+
+```typescript
+import { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+// Use the recommended XTERM type
+await client.startShell(PtyType.XTERM);
+
+// Or use VANILLA for simple cases
+await client.startShell(PtyType.VANILLA);
+```

@@ -1,0 +1,175 @@
+---
+title: Executing SSH Commands
+description: Learn how to execute SSH commands on remote servers using the execute() method
+---
+
+The `execute()` method allows you to run individual SSH commands on a remote server and receive the output. This is ideal for one-off commands that don't require an interactive session.
+
+## Basic Usage
+
+Once you have an established SSH connection, you can execute commands using the `execute()` method:
+
+```javascript
+const command = 'ls -l';
+client.execute(command)
+  .then(output => console.log(output))
+  .catch(error => console.error('Command failed:', error));
+```
+
+## Common Examples
+
+<Tabs>
+  <Tab title="File System Operations">
+    ```javascript
+    // List files in a directory
+    const files = await client.execute('ls -la /var/www');
+    
+    // Check disk usage
+    const diskUsage = await client.execute('df -h');
+    
+    // Find files modified in last 24 hours
+    const recentFiles = await client.execute('find /home -mtime -1');
+    ```
+  </Tab>
+  
+  <Tab title="System Information">
+    ```javascript
+    // Get system uptime
+    const uptime = await client.execute('uptime');
+    
+    // Check memory usage
+    const memory = await client.execute('free -m');
+    
+    // View running processes
+    const processes = await client.execute('ps aux');
+    
+    // Get OS information
+    const osInfo = await client.execute('uname -a');
+    ```
+  </Tab>
+  
+  <Tab title="Service Management">
+    ```javascript
+    // Check service status
+    const status = await client.execute('systemctl status nginx');
+    
+    // Restart a service (requires sudo)
+    const restart = await client.execute('sudo systemctl restart apache2');
+    
+    // View service logs
+    const logs = await client.execute('journalctl -u ssh -n 50');
+    ```
+  </Tab>
+  
+  <Tab title="Network Operations">
+    ```javascript
+    // Check network connections
+    const connections = await client.execute('netstat -tuln');
+    
+    // Ping a host
+    const ping = await client.execute('ping -c 4 google.com');
+    
+    // Check open ports
+    const ports = await client.execute('ss -tuln');
+    ```
+  </Tab>
+</Tabs>
+
+## Using Callbacks
+
+You can also use the optional callback parameter instead of promises:
+
+```javascript
+client.execute('whoami', (error, output) => {
+  if (error) {
+    console.error('Command failed:', error);
+    return;
+  }
+  console.log('Current user:', output);
+});
+```
+
+## Chaining Commands
+
+<Steps>
+  <Step title="Chain with shell operators">
+    You can chain multiple commands using shell operators like `&&`, `||`, or `;`:
+    
+    ```javascript
+    // Execute commands sequentially (all must succeed)
+    await client.execute('cd /var/www && ls -l && pwd');
+    
+    // Execute with fallback
+    await client.execute('command1 || command2');
+    
+    // Execute regardless of previous command status
+    await client.execute('command1; command2; command3');
+    ```
+  </Step>
+  
+  <Step title="Use pipes">
+    Pipe output between commands:
+    
+    ```javascript
+    const result = await client.execute('ps aux | grep node | wc -l');
+    console.log('Number of Node processes:', result.trim());
+    ```
+  </Step>
+</Steps>
+
+## Error Handling
+
+<Warning>
+  Commands that fail will reject the promise. Always implement proper error handling:
+</Warning>
+
+```javascript
+try {
+  const output = await client.execute('cat /etc/shadow');
+  console.log(output);
+} catch (error) {
+  console.error('Permission denied or file not found:', error);
+}
+```
+
+## Best Practices
+
+<Note>
+  - **Keep it simple**: The `execute()` method is designed for single commands. For complex interactions, use [interactive shell](/guides/interactive-shell) instead.
+  - **Handle timeouts**: Long-running commands may timeout. Consider using shell sessions for commands that take significant time.
+  - **Parse output**: Command output is returned as a string. Parse it appropriately for your use case.
+  - **Security**: Avoid passing user input directly into commands without sanitization to prevent command injection.
+</Note>
+
+## Processing Output
+
+Here's an example of parsing command output:
+
+```javascript
+const output = await client.execute('ls -la');
+const lines = output.split('\n').filter(line => line.trim());
+
+const files = lines.slice(1).map(line => {
+  const parts = line.split(/\s+/);
+  return {
+    permissions: parts[0],
+    owner: parts[2],
+    size: parts[4],
+    name: parts.slice(8).join(' ')
+  };
+});
+
+console.log('Files:', files);
+```
+
+## Limitations
+
+- Commands are executed in a non-interactive environment
+- No persistent state between `execute()` calls (each command runs in a fresh context)
+- Standard output and error are combined in the response
+- For interactive commands or maintaining session state, use [startShell()](/guides/interactive-shell) instead
+
+## Next Steps
+
+- Learn about [interactive shell sessions](/guides/interactive-shell) for more complex interactions
+- Explore [SFTP operations](/guides/sftp-operations) for file management

@@ -1,0 +1,284 @@
+---
+title: Interactive Shell Sessions
+description: Work with persistent shell sessions using startShell, writeToShell, and shell events
+---
+
+Interactive shell sessions allow you to maintain a persistent connection with a command-line interface on the remote server. This is useful for commands that require continuous interaction or when you need to maintain state across multiple commands.
+
+## Starting a Shell Session
+
+Use the `startShell()` method to initiate an interactive shell session:
+
+```javascript
+import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+const client = await SSHClient.connectWithPassword(
+  '10.0.0.10',
+  22,
+  'user',
+  'password'
+);
+
+await client.startShell(PtyType.VANILLA);
+```
+
+## PTY (Pseudo-Terminal) Types
+
+The library supports multiple PTY types for different terminal emulation needs:
+
+<Tabs>
+  <Tab title="VANILLA">
+    ```javascript
+    client.startShell(PtyType.VANILLA)
+    ```
+    Basic terminal type with minimal features. Use this for simple command execution without special terminal requirements.
+  </Tab>
+  
+  <Tab title="VT100">
+    ```javascript
+    client.startShell(PtyType.VT100)
+    ```
+    Classic VT100 terminal emulation. Compatible with most legacy systems and applications.
+  </Tab>
+  
+  <Tab title="VT102">
+    ```javascript
+    client.startShell(PtyType.VT102)
+    ```
+    Enhanced version of VT100 with additional features.
+  </Tab>
+  
+  <Tab title="VT220">
+    ```javascript
+    client.startShell(PtyType.VT220)
+    ```
+    Advanced VT terminal with extended character sets and features.
+  </Tab>
+  
+  <Tab title="ANSI">
+    ```javascript
+    client.startShell(PtyType.ANSI)
+    ```
+    ANSI standard terminal. Good for applications requiring ANSI escape sequences.
+  </Tab>
+  
+  <Tab title="XTERM">
+    ```javascript
+    client.startShell(PtyType.XTERM)
+    ```
+    Modern terminal emulation with the most features. Recommended for interactive applications and full-featured shells.
+  </Tab>
+</Tabs>
+
+<Note>
+  Choose the PTY type based on your needs:
+  - Use **VANILLA** for simple scripts and basic command execution
+  - Use **XTERM** for full-featured interactive sessions
+  - Use **VT100/VT102** for compatibility with older systems
+</Note>
+
+## Reading from the Shell
+
+Set up an event listener to receive output from the shell:
+
+<Steps>
+  <Step title="Register the Shell event handler">
+    ```javascript
+    client.on('Shell', (output) => {
+      if (output) {
+        console.log('Shell output:', output);
+      }
+    });
+    ```
+  </Step>
+  
+  <Step title="Start the shell session">
+    ```javascript
+    await client.startShell(PtyType.XTERM);
+    ```
+  </Step>
+  
+  <Step title="Process incoming data">
+    The `Shell` event will fire whenever the remote shell sends output:
+    
+    ```javascript
+    let buffer = '';
+    
+    client.on('Shell', (output) => {
+      if (output) {
+        buffer += output;
+        
+        // Process complete lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        
+        lines.forEach(line => {
+          console.log('Complete line:', line);
+        });
+      }
+    });
+    ```
+  </Step>
+</Steps>
+
+## Writing to the Shell
+
+Send commands to the active shell session using `writeToShell()`:
+
+```javascript
+// Execute a command
+await client.writeToShell('ls -la\n');
+
+// Change directory (state persists)
+await client.writeToShell('cd /var/www\n');
+
+// Run command in new directory
+await client.writeToShell('pwd\n');
+```
+
+<Warning>
+  Don't forget to include the newline character (`\n`) at the end of your commands to execute them. Without it, the command will be typed but not executed.
+</Warning>
+
+## Complete Example
+
+Here's a full example of an interactive shell session:
+
+```javascript
+import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+
+const runInteractiveSession = async () => {
+  try {
+    // Connect to the server
+    const client = await SSHClient.connectWithPassword(
+      '10.0.0.10',
+      22,
+      'user',
+      'password'
+    );
+    
+    // Set up shell output handler
+    client.on('Shell', (output) => {
+      if (output) {
+        console.log('[Shell]', output);
+      }
+    });
+    
+    // Start the shell
+    await client.startShell(PtyType.XTERM);
+    console.log('Shell started');
+    
+    // Execute commands with state persistence
+    await client.writeToShell('cd /var/log\n');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    await client.writeToShell('pwd\n');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    await client.writeToShell('ls -l\n');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Close the shell when done
+    client.closeShell();
+    console.log('Shell closed');
+    
+    // Disconnect
+    client.disconnect();
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+runInteractiveSession();
+```
+
+## Automatic Shell Initialization
+
+<Note>
+  The `writeToShell()` method automatically starts a shell session (using `PtyType.VANILLA`) if one isn't already active. However, it's recommended to explicitly call `startShell()` with your desired PTY type for better control.
+</Note>
+
+```javascript
+// This will auto-start a VANILLA shell
+await client.writeToShell('ls\n');
+
+// Equivalent to:
+// await client.startShell(PtyType.VANILLA);
+// await client.writeToShell('ls\n');
+```
+
+## Closing the Shell
+
+When you're done with the shell session, close it to free up resources:
+
+```javascript
+client.closeShell();
+```
+
+<Warning>
+  - Closing the shell will unregister the `Shell` event listener
+  - Any pending output may be lost when the shell is closed
+  - After closing, you need to call `startShell()` again to start a new session
+</Warning>
+
+## State Persistence
+
+One of the key advantages of shell sessions over `execute()` is state persistence:
+
+<Accordion title="Example: Working Directory">
+  ```javascript
+  // With execute() - each command runs in a fresh context
+  await client.execute('cd /var/www'); // Changes directory
+  await client.execute('pwd'); // Still in home directory!
+  
+  // With shell - state persists
+  await client.writeToShell('cd /var/www\n');
+  await client.writeToShell('pwd\n'); // Shows /var/www
+  ```
+</Accordion>
+
+<Accordion title="Example: Environment Variables">
+  ```javascript
+  // Set an environment variable
+  await client.writeToShell('export MY_VAR=hello\n');
+  
+  // Use it in subsequent commands
+  await client.writeToShell('echo $MY_VAR\n'); // Outputs: hello
+  ```
+</Accordion>
+
+<Accordion title="Example: Interactive Programs">
+  ```javascript
+  // Start an interactive program
+  await client.writeToShell('python3\n');
+  
+  // Send Python commands
+  await client.writeToShell('x = 5\n');
+  await client.writeToShell('print(x * 2)\n');
+  
+  // Exit Python
+  await client.writeToShell('exit()\n');
+  ```
+</Accordion>
+
+## Best Practices
+
+1. **Always register event handlers before starting the shell** to avoid missing initial output
+2. **Add delays between commands** if you need to wait for output (or implement a proper response parser)
+3. **Use appropriate PTY types** for your use case
+4. **Close the shell** when done to free resources
+5. **Handle errors** appropriately as shell operations can fail
+
+## Use Cases
+
+- Running interactive programs (database CLIs, REPLs, etc.)
+- Executing a series of related commands that depend on shared state
+- Monitoring real-time output from long-running processes
+- Working with shell scripts that require user input
+- Maintaining a persistent working directory across commands
+
+## Next Steps
+
+- Learn about [executing simple commands](/guides/ssh-commands) for one-off operations
+- Explore [SFTP operations](/guides/sftp-operations) for file transfers
+- Check [platform-specific considerations](/guides/platform-specific) for iOS and Android differences
