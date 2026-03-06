@@ -17,13 +17,13 @@ body:
 #         > Without one, maintainers will be forced to first reproduce the issue and craft missing context, rather than being able to address the report immediately.
 #         > Issues without a reproduction link may be closed without further notice.
   - type: textarea
-    id: what-happened
+    # id: what-happened
     attributes:
       label: Describe the bug
-      description: A clear and concise description of what the bug is.
-      placeholder: Provide the steps to reproduce the bug. Also include details of what you expect to happen.
-    validations:
-      required: true
+    #   description: A clear and concise description of what the bug is.
+    #   placeholder: Provide the steps to reproduce the bug. Also include details of what you expect to happen.
+    # validations:
+    #   required: true
 #   - type: upload
 #     id: screenshots
 #     attributes:
