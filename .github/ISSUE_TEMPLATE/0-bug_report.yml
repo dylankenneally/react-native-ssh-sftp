@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a bug in the library.
+labels: ['bug', 'triage']
+title: "[BUG] "
+assignees:
+  - dylankenneally
+type: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > Reproductions are necessary for **most** bug reports.
+        > Without one, maintainers will be forced to first reproduce the issue and craft missing context, rather than being able to address the report immediately.
+        > Issues without a reproduction link may be closed without further notice.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Provide the steps to reproduce the bug. Also include details of what you expect to happen.
+    validations:
+      required: true
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Upload screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: What version of our library are you using?
+      options:
+        - v1.6.x
+        - v1.5.x
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
