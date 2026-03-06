@@ -2,7 +2,8 @@ name: "Bug report"
 body:
 - type: textarea
   id: what-happened
-  label: Describe the bug
+  attributes:
+    label: Describe the bug
 
 
 # name: Bug report
