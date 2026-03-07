@@ -1,0 +1,22 @@
+name: "Documentation Bug"
+description: 'Report something that is wrong or missing from the documentation.'
+title: '[docs] '
+labels: ['documentation']
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping us make the library even better. We want the documentation to be the best resource it can be, and we will only get there with your feedback. The documentation is available [on Mintlify](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app/introduction).
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Describe what is wrong or missing from the documentation. Suggest how we can improve.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Link to the related documentation page
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: If this is a typo, or something you think you could handle fixing, we welcome your pull request. You can edit any page in our documentation by scrolling to the bottom of the page and selecting `Edit this page`.

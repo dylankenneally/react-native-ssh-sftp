@@ -1,10 +1,12 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: "[Enhancement request]"
+about: Suggest an idea for this project.
+title: "[Enhancement request] "
 labels: enhancement, triage
 assignees: dylankenneally
 ---
+
+Thanks for taking the time to fill out this feature request.
 
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
