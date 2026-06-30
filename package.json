@@ -71,7 +71,7 @@
     "eslint": "^10.0.2",
     "husky": "^9.1.7",
     "mint": "^4.2.651",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "npm": ">=9.5.0 <=11",
