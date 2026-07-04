@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
@@ -47,7 +46,6 @@ import com.facebook.react.bridge.Arguments;
 import com.jcraft.jsch.KeyPair;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ByteArrayOutputStream;
 
@@ -150,18 +148,12 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void getKeyDetails(String privateKey, Promise promise) {
-  File tempPrivateKeyFile = null;
   try {
-    // Create temporary files for the private and public keys
-    tempPrivateKeyFile = File.createTempFile("temp_private_key", ".pem");
-    tempPrivateKeyFile.deleteOnExit();
-
-    try (FileWriter privateKeyWriter = new FileWriter(tempPrivateKeyFile);) {
-      privateKeyWriter.write(privateKey);
-    }
-
+    // Parse the key straight from memory. The previous implementation wrote the
+    // private key to a temp file on disk, which briefly exposed it and could
+    // leak if the process was killed mid-parse (review #3).
     JSch jsch = new JSch();
-    KeyPair kpair = KeyPair.load(jsch, tempPrivateKeyFile.getAbsolutePath());
+    KeyPair kpair = KeyPair.load(jsch, privateKey.getBytes(), null);
 
     String keyType;
     switch (kpair.getKeyType()) {
