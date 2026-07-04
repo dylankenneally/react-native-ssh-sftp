@@ -71,6 +71,7 @@ All functions that run asynchronously where we have to wait for a result returns
 > [!NOTE]
 > On iOS, this package currently doesn't support the simulator, you will need to have your app running on a physical device. If you  would like to know more about this, see [this issue](https://github.com/dylankenneally/react-native-ssh-sftp/issues/20). I'd welcome a PR to resolve this.
 >
+
 ### Create a client using password authentication
 
 ```javascript

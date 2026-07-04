@@ -25,14 +25,16 @@ if hasChanges; then
     exit $retVal
   fi
 
-  # todo: our current unit test prove nothing, we need to add some real tests
-  # log "Testing..."
-  # npm test
-  # retVal=$?
-  # if [ $retVal -ne 0 ]; then
-  #   log "Testing failed, fix the errors before committing"
-  #   exit $retVal
-  # fi
+  # Run the unit suite with coverage. A failing test or sub-threshold coverage
+  # aborts the commit before the version is bumped. (Integration tests need Docker
+  # and are intentionally left to CI.)
+  log "Testing..."
+  npm run test:coverage
+  retVal=$?
+  if [ $retVal -ne 0 ]; then
+    log "Testing failed, fix the errors before committing"
+    exit $retVal
+  fi
 
   # Update (patch) the package version numbers if changes are detected
   log "Patching package application version"

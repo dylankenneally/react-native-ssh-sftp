@@ -4,6 +4,7 @@
 # Project
 /node_modules
 /lib
+/coverage
 /react-native-ssh-sftp*.tgz
 /dylankenneally-react-native-ssh-sftp*.tgz
 

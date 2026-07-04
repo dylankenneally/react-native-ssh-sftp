@@ -105,5 +105,10 @@
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
-  }
+  },
+
+  /* Only the library source is compiled to `lib/`. Test files live alongside the
+     source but are excluded so they are never emitted into the published output. */
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "lib", "src/**/*.test.ts", "src/__tests__/**"]
 }

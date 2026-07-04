@@ -1,6 +1,6 @@
 {
   "name": "@dylankenneally/react-native-ssh-sftp",
-  "version": "1.9.1",
+  "version": "1.9.5",
   "description": "SSH and SFTP client library for React Native",
   "main": "lib/sshclient.js",
   "scripts": {
@@ -11,6 +11,11 @@
     "compile": "npx tsc",
     "lint": "eslint .",
     "lint:build": "cross-env NODE_ENV=production npm run lint -- --max-warnings 20",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --run --coverage",
+    "test:integration": "node --test test/integration/smoke.test.mjs",
+    "test:integration:local": "docker compose -f test/integration/docker-compose.yml up -d && npm run test:integration; status=$?; docker compose -f test/integration/docker-compose.yml down; exit $status",
     "docs": "cd docs && mint dev"
   },
   "keywords": [
@@ -67,11 +72,14 @@
     "@eslint/js": "^10.0.1",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
     "@typescript-eslint/parser": "^8.62.1",
+    "@vitest/coverage-v8": "^4.1.9",
     "cross-env": "^10.1.0",
     "eslint": "^10.0.2",
     "husky": "^9.1.7",
     "mint": "^4.2.651",
-    "typescript": "^5.9.3"
+    "ssh2": "^1.17.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
   },
   "engines": {
     "npm": ">=9.5.0 <=11",
