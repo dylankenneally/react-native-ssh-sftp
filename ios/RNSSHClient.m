@@ -57,39 +57,43 @@ RCT_EXPORT_METHOD(connectToHost:(NSString *)host
                   passwordOrKey:(id) passwordOrKey // password or {privateKey: value, [publicKey: value, passphrase: value]}
                   withKey:(nonnull NSString*)key
                   withCallback:(RCTResponseSenderBlock)callback){
-    NMSSHSession* session = [NMSSHSession connectToHost:host
-                                                   port:port
-                                           withUsername:username];
-    if (session && session.isConnected) {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    // Run the entire connection + authentication on a single background thread.
+    // NMSSH is not thread-safe: all operations on a session must happen on the
+    // same thread that created it.
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NMSSHSession* session = [NMSSHSession connectToHost:host
+                                                       port:port
+                                               withUsername:username];
+        if (!session) {
+            NSLog(@"Connection to host %@ failed", host);
+            callback(@[[NSString stringWithFormat:@"Connection to host %@ failed, without session", host]]);
+            return;
+        }
+
+        if (!session.isConnected) {
+            NSLog(@"Connection to host %@ failed", host);
+            callback(@[[NSString stringWithFormat:@"Connection to host %@ failed, with session", host]]);
+            return;
+        }
+
         if ([passwordOrKey isKindOfClass:[NSString class]])
             [session authenticateByPassword:passwordOrKey];
         else
             [session authenticateByInMemoryPublicKey:[passwordOrKey objectForKey:@"publicKey"] privateKey:[passwordOrKey objectForKey:@"privateKey"] andPassword:[passwordOrKey objectForKey:@"passphrase"]];
 
-            if (session.isAuthorized) {
-                SSHClient* client = [[SSHClient alloc] init];
-                client._session = session;
-                client._key = key;
-                [[self clientPool] setObject:client forKey:key];
-                NSLog(@"Session connected");
-                callback(@[]);
-            }
-            else
-            {
-                NSLog(@"Authentication failed");
-                callback(@[[NSString stringWithFormat:@"Authentication to host %@ failed", host]]);
-            }
-        });
-    } else {
-      if (session) {
-        NSLog(@"Connection to host %@ failed", host);
-        callback(@[[NSString stringWithFormat:@"Connection to host %@ failed, with session", host]]);
-      } else {
-        NSLog(@"Connection to host %@ failed", host);
-        callback(@[[NSString stringWithFormat:@"Connection to host %@ failed, without session", host]]);
-      }
-    }
+        if (!session.isAuthorized) {
+            NSLog(@"Authentication failed");
+            callback(@[[NSString stringWithFormat:@"Authentication to host %@ failed", host]]);
+            return;
+        }
+
+        SSHClient* client = [[SSHClient alloc] init];
+        client._session = session;
+        client._key = key;
+        [[self clientPool] setObject:client forKey:key];
+        NSLog(@"Session connected");
+        callback(@[]);
+    });
 }
 
 RCT_EXPORT_METHOD(execute:(NSString *)command
