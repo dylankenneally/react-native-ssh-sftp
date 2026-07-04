@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
+import org.json.JSONObject;
+
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
@@ -182,10 +184,6 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
     promise.resolve(result);
   } catch (Exception e) {
     promise.reject("Error", e.getMessage());
-  } finally {
-    if (tempPrivateKeyFile != null) {
-      tempPrivateKeyFile.delete();
-    }
   }
 }
 
@@ -431,27 +429,22 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
               isDir = 1;
               filename += '/';
             }
-            String str = String.format(Locale.getDefault(),
-              "{\"filename\":\"%s\"," +
-              "\"isDirectory\":%d," +
-              "\"modificationDate\":\"%s\"," +
-              "\"lastAccess\":\"%s\"," +
-              "\"fileSize\":%d," +
-              "\"ownerUserID\":%d," +
-              "\"ownerGroupID\":%d," +
-              "\"permissions\":\"%s\"," +
-              "\"flags\":%d}",
-              filename,
-              isDir,
-              file.getAttrs().getMTime(),
-              file.getAttrs().getATime(),
-              file.getAttrs().getSize(),
-              file.getAttrs().getUId(),
-              file.getAttrs().getGId(),
-              file.getAttrs().getPermissions(),
-              file.getAttrs().getFlags()
-            );
-            response.pushString(str);
+            // Build the entry with a real JSON serializer so filenames containing
+            // quotes, backslashes, control characters, or unicode are escaped
+            // correctly (manual string formatting produced invalid JSON, review #7).
+            // Field types are preserved to match the previous output: dates and
+            // permissions are strings, the rest are numbers.
+            JSONObject entry = new JSONObject();
+            entry.put("filename", filename);
+            entry.put("isDirectory", isDir);
+            entry.put("modificationDate", String.valueOf(file.getAttrs().getMTime()));
+            entry.put("lastAccess", String.valueOf(file.getAttrs().getATime()));
+            entry.put("fileSize", file.getAttrs().getSize());
+            entry.put("ownerUserID", file.getAttrs().getUId());
+            entry.put("ownerGroupID", file.getAttrs().getGId());
+            entry.put("permissions", String.valueOf(file.getAttrs().getPermissions()));
+            entry.put("flags", file.getAttrs().getFlags());
+            response.pushString(entry.toString());
           }
           callback.invoke(null, response);
         } catch (SftpException error) {

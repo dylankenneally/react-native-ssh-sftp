@@ -42,6 +42,29 @@ The current support policy is:
 | Previous | Yes |
 | Older | No |
 
+## Host key verification
+
+<Warning>
+This library does not currently verify the remote server's host key. On Android
+the underlying SSH session is configured with `StrictHostKeyChecking` disabled,
+and on iOS the host key is not pinned or checked. As a result, connections are
+susceptible to man-in-the-middle (MITM) attacks: a client cannot detect if it is
+talking to an impostor server.
+</Warning>
+
+Until host key verification is supported, treat this library as safe only on
+networks you trust, and avoid transmitting highly sensitive data over
+connections that could be intercepted. Practical steps to reduce risk:
+
+- Prefer connecting over trusted, controlled networks (for example, a VPN).
+- Use key-based authentication rather than passwords where possible, so credentials are never sent in a form a MITM could replay.
+- Avoid connecting to servers reached over untrusted public networks.
+
+Adding an API to supply known host keys (or an `onHostKey` verification
+callback) is tracked as a future enhancement. See the project's
+[issues](https://github.com/dylankenneally/react-native-ssh-sftp/issues) to
+follow or contribute to that work.
+
 ## Security best practices
 
 When using React Native SSH SFTP in your app:

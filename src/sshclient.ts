@@ -186,6 +186,9 @@ export default class SSHClient {
     });
   }
 
+  // Monotonic counter used, together with a timestamp, to build unique client keys.
+  private static _keyCounter = 0;
+
   // "unique" key to identify callback from native library
   private _key: string;
   private _listeners: Record<string, EmitterSubscription>;
@@ -224,16 +227,19 @@ export default class SSHClient {
   }
 
   /**
-   * Generates a random client key, used to identify which callback match with which instance.
+   * Generates a unique client key, used to identify which native callback and
+   * event belongs to which instance.
    *
-   * @returns A string representing the random client key.
+   * Combines a timestamp, a process-lifetime monotonic counter, and a small
+   * random suffix. The counter guarantees uniqueness for clients created within
+   * the same millisecond, which the previous 16-bit random-only approach could
+   * not (it had a realistic collision risk across many connections).
+   *
+   * @returns A string uniquely identifying the client instance.
    */
   private static getRandomClientKey(): string {
-    // TODO This should be returned by the native code...
-    // There's no need for actual randomness, just uniqueness.
-    return Math.floor((1 + Math.random()) * 0x10000)
-      .toString(16)
-      .substring(1);
+    const random = Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0');
+    return `ssh_${Date.now().toString(36)}_${(++SSHClient._keyCounter).toString(36)}_${random}`;
   }
 
   /**
