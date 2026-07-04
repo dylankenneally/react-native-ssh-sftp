@@ -103,14 +103,19 @@ RCT_EXPORT_METHOD(execute:(NSString *)command
     if (client) {
         NMSSHSession* session = client._session;
         if ([self isConnected:session withCallback:callback]) {
-            NSError* error = nil;
-            NSString* response = [session.channel execute:command error:&error timeout:@10];
-            if (error) {
-                NSLog(@"Error executing command: %@", error);
-                callback(@[RCTJSErrorFromNSError(error)]);
-            } else {
-                callback(@[[NSNull null], response]);
-            }
+            // Run the blocking execute (up to a 10s timeout) on a background queue
+            // so it doesn't stall the serial method queue and block other SSH
+            // operations, consistent with startShell/writeToShell (review #8).
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                NSError* error = nil;
+                NSString* response = [session.channel execute:command error:&error timeout:@10];
+                if (error) {
+                    NSLog(@"Error executing command: %@", error);
+                    callback(@[RCTJSErrorFromNSError(error)]);
+                } else {
+                    callback(@[[NSNull null], response]);
+                }
+            });
         }
     } else {
         callback(@[@"Unknown client"]);

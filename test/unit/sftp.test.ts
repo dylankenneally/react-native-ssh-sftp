@@ -34,17 +34,17 @@ describe('SFTP operations, counters, and cancellation', () => {
       expect(RNSSHClient.sftpMkdir).toHaveBeenCalledTimes(2);
     });
 
-    // KNOWN BUG (see scratch/kiro-review-2026.07.04.md #5): connectSFTP sets
-    // `_activeStream.sftp = true` and registers listeners *before* the error check,
-    // so a failed connect still marks SFTP active. This test documents the intended
-    // behavior and is skipped until the source bug is fixed.
-    it.skip('should NOT mark SFTP active when the native connect fails', async () => {
+    // Fixed in Phase 1.1 (see scratch/kiro-review-2026.07.04.md #5): connectSFTP now
+    // sets `_activeStream.sftp = true` and registers listeners only after the error
+    // check, so a failed connect no longer marks SFTP active and later ops retry.
+    it('does NOT mark SFTP active when the native connect fails', async () => {
       RNSSHClient.connectSFTP.mockImplementation(rejectNative('sftp connect failed'));
 
       await expect(client.connectSFTP()).rejects.toBe('sftp connect failed');
 
-      // Intended: a subsequent op should retry the connection rather than assume it succeeded.
+      // A subsequent op should retry the connection rather than assume it succeeded.
       RNSSHClient.connectSFTP.mockClear();
+      RNSSHClient.connectSFTP.mockImplementation(resolveNative());
       RNSSHClient.sftpMkdir.mockImplementation(resolveNative());
       await client.sftpMkdir('/tmp/x');
       expect(RNSSHClient.connectSFTP).toHaveBeenCalledTimes(1);
@@ -167,6 +167,42 @@ describe('SFTP operations, counters, and cancellation', () => {
       RNSSHClient.sftpDownload.mockImplementation(resolveNative('/local/file'));
 
       await expect(client.sftpDownload('/remote/file', '/local/file')).resolves.toBe('/local/file');
+    });
+
+    it('rejects a second upload while one is already in flight', async () => {
+      await client.connectSFTP();
+
+      const deferred = deferNative();
+      RNSSHClient.sftpUpload.mockImplementation(deferred.impl);
+      const first = client.sftpUpload('/local', '/remote');
+      await Promise.resolve(); // let the first upload reach the native call
+
+      // A concurrent upload is rejected without touching the native layer again.
+      await expect(client.sftpUpload('/local2', '/remote2')).rejects.toThrow(/already in progress/);
+      expect(RNSSHClient.sftpUpload).toHaveBeenCalledTimes(1);
+
+      // Once the first settles, a new upload is allowed again.
+      deferred.invoke(null);
+      await expect(first).resolves.toBeUndefined();
+      RNSSHClient.sftpUpload.mockImplementation(resolveNative());
+      await expect(client.sftpUpload('/local3', '/remote3')).resolves.toBeUndefined();
+    });
+
+    it('rejects a second download while one is already in flight', async () => {
+      await client.connectSFTP();
+
+      const deferred = deferNative();
+      RNSSHClient.sftpDownload.mockImplementation(deferred.impl);
+      const first = client.sftpDownload('/remote', '/local');
+      await Promise.resolve();
+
+      await expect(client.sftpDownload('/remote2', '/local2')).rejects.toThrow(/already in progress/);
+      expect(RNSSHClient.sftpDownload).toHaveBeenCalledTimes(1);
+
+      deferred.invoke(null, '/local');
+      await expect(first).resolves.toBe('/local');
+      RNSSHClient.sftpDownload.mockImplementation(resolveNative('/local3'));
+      await expect(client.sftpDownload('/remote3', '/local3')).resolves.toBe('/local3');
     });
 
     it('sftpCancelUpload is a no-op when no upload is in flight', () => {

@@ -621,6 +621,18 @@ export default class SSHClient {
    * @returns A Promise that resolves when the upload is complete or rejects with an error.
    */
   sftpUpload(localFilePath: string, remoteFilePath: string, callback?: CallbackFunction<void>): Promise<void> {
+    // The native layer tracks a single cancel flag per client, so two concurrent
+    // uploads on the same client would clobber each other's cancel state. Reject
+    // a second upload while one is already running (review #13).
+    if (this._counters.upload > 0) {
+      const error = new Error('An SFTP upload is already in progress for this client');
+      if (callback) {
+        callback(error);
+      }
+
+      return Promise.reject(error);
+    }
+
     return this.checkSFTP(callback)
       .then(() => new Promise((resolve, reject) => {
         ++this._counters.upload;
@@ -657,6 +669,18 @@ export default class SSHClient {
    * @returns A promise that resolves with the response string when the download is complete.
    */
   sftpDownload(remoteFilePath: string, localFilePath: string, callback?: CallbackFunction<string>): Promise<string> {
+    // The native layer tracks a single cancel flag per client, so two concurrent
+    // downloads on the same client would clobber each other's cancel state. Reject
+    // a second download while one is already running (review #13).
+    if (this._counters.download > 0) {
+      const error = new Error('An SFTP download is already in progress for this client');
+      if (callback) {
+        callback(error);
+      }
+
+      return Promise.reject(error);
+    }
+
     return this.checkSFTP(callback)
       .then(() => new Promise((resolve, reject) => {
         ++this._counters.download;
