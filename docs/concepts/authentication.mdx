@@ -118,13 +118,13 @@ static generateKeyPair(
   passphrase?: string,
   keySize?: number,
   comment?: string
-): Promise<genKeyPair>
+): Promise<GeneratedKeyPair>
 ```
 
 ### Return Type
 
 ```typescript
-interface genKeyPair {
+interface GeneratedKeyPair {
   privateKey: string;
   publicKey?: string;
 }

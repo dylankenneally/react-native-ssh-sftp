@@ -103,14 +103,19 @@ RCT_EXPORT_METHOD(execute:(NSString *)command
     if (client) {
         NMSSHSession* session = client._session;
         if ([self isConnected:session withCallback:callback]) {
-            NSError* error = nil;
-            NSString* response = [session.channel execute:command error:&error timeout:@10];
-            if (error) {
-                NSLog(@"Error executing command: %@", error);
-                callback(@[RCTJSErrorFromNSError(error)]);
-            } else {
-                callback(@[[NSNull null], response]);
-            }
+            // Run the blocking execute (up to a 10s timeout) on a background queue
+            // so it doesn't stall the serial method queue and block other SSH
+            // operations, consistent with startShell/writeToShell (review #8).
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                NSError* error = nil;
+                NSString* response = [session.channel execute:command error:&error timeout:@10];
+                if (error) {
+                    NSLog(@"Error executing command: %@", error);
+                    callback(@[RCTJSErrorFromNSError(error)]);
+                } else {
+                    callback(@[[NSNull null], response]);
+                }
+            });
         }
     } else {
         callback(@[@"Unknown client"]);
@@ -203,29 +208,32 @@ RCT_EXPORT_METHOD(sftpLs:(NSString *)path
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 NSArray* fileList = [client._sftpSession contentsOfDirectoryAtPath:path];
                 if (fileList) {
-                    NSString* str = @"";
                     NSMutableArray* array = [NSMutableArray array];
                     for (NMSFTPFile* file in fileList) {
-                        str = [NSString stringWithFormat:
-                               @"{\"filename\":\"%@\","
-                               "\"isDirectory\":%d,"
-                               "\"modificationDate\":\"%@\","
-                               "\"lastAccess\":\"%@\","
-                               "\"fileSize\":%llu,"
-                               "\"ownerUserID\":%lu,"
-                               "\"ownerGroupID\":%lu,"
-                               "\"permissions\":\"%@\","
-                               "\"flags\":%lu}",
-                               file.filename,
-                               file.isDirectory,
-                               file.modificationDate,
-                               file.lastAccess,
-                               [file.fileSize longLongValue],
-                               file.ownerUserID,
-                               file.ownerGroupID,
-                               file.permissions,
-                               file.flags];
-                        [array addObject:str];
+                        // Serialize each entry with NSJSONSerialization so filenames
+                        // containing quotes, backslashes, control characters, or unicode
+                        // are escaped correctly. Manual stringWithFormat: produced invalid
+                        // JSON that crashed JSON.parse on the JS side (review #7). Field
+                        // types match the previous output: dates/permissions are strings,
+                        // isDirectory is a 0/1 integer, the rest are numbers.
+                        NSDictionary* entry = @{
+                            @"filename": file.filename ?: @"",
+                            @"isDirectory": @((int)file.isDirectory),
+                            @"modificationDate": file.modificationDate ? [file.modificationDate description] : @"",
+                            @"lastAccess": file.lastAccess ? [file.lastAccess description] : @"",
+                            @"fileSize": file.fileSize ?: @0,
+                            @"ownerUserID": @(file.ownerUserID),
+                            @"ownerGroupID": @(file.ownerGroupID),
+                            @"permissions": file.permissions ?: @"",
+                            @"flags": @(file.flags)
+                        };
+                        NSError* jsonError = nil;
+                        NSData* jsonData = [NSJSONSerialization dataWithJSONObject:entry options:0 error:&jsonError];
+                        if (jsonData) {
+                            [array addObject:[[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding]];
+                        } else {
+                            NSLog(@"Failed to serialize file entry: %@", jsonError);
+                        }
                     }
                     callback(@[[NSNull null], array]);
                 } else {
@@ -415,6 +423,9 @@ RCT_EXPORT_METHOD(disconnect:(nonnull NSString*)key) {
     if (client && client._session) {
         [client._session disconnect];
     }
+    // Remove the client from the pool so it can be released. Without this the
+    // pool grows unbounded for apps that open many short-lived connections.
+    [[self clientPool] removeObjectForKey:key];
 }
 
 @end

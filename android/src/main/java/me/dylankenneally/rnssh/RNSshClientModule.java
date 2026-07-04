@@ -34,12 +34,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
-import okhttp3.internal.Util;
+import org.json.JSONObject;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactMethod;
@@ -49,7 +48,6 @@ import com.facebook.react.bridge.Arguments;
 import com.jcraft.jsch.KeyPair;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ByteArrayOutputStream;
 
@@ -126,7 +124,7 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
                 int keyType = getKeyTypeFromString(type); // You'll implement this to translate string to type
                 JSch jsch = new JSch();
                 KeyPair kpair = KeyPair.genKeyPair(jsch, keyType, keySize);
-                
+
                 // callback.invoke("Finger print: " + kpair.getFingerPrint());
                 ByteArrayOutputStream privateKeyOut = new ByteArrayOutputStream();
                 ByteArrayOutputStream publicKeyOut = new ByteArrayOutputStream();
@@ -152,18 +150,12 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void getKeyDetails(String privateKey, Promise promise) {
-  File tempPrivateKeyFile = null;
   try {
-    // Create temporary files for the private and public keys
-    tempPrivateKeyFile = File.createTempFile("temp_private_key", ".pem");
-    tempPrivateKeyFile.deleteOnExit();
-
-    try (FileWriter privateKeyWriter = new FileWriter(tempPrivateKeyFile);) {
-      privateKeyWriter.write(privateKey);
-    }
-
+    // Parse the key straight from memory. The previous implementation wrote the
+    // private key to a temp file on disk, which briefly exposed it and could
+    // leak if the process was killed mid-parse (review #3).
     JSch jsch = new JSch();
-    KeyPair kpair = KeyPair.load(jsch, tempPrivateKeyFile.getAbsolutePath());
+    KeyPair kpair = KeyPair.load(jsch, privateKey.getBytes(), null);
 
     String keyType;
     switch (kpair.getKeyType()) {
@@ -192,10 +184,6 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
     promise.resolve(result);
   } catch (Exception e) {
     promise.reject("Error", e.getMessage());
-  } finally {
-    if (tempPrivateKeyFile != null) {
-      tempPrivateKeyFile.delete();
-    }
   }
 }
 
@@ -441,27 +429,22 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
               isDir = 1;
               filename += '/';
             }
-            String str = String.format(Locale.getDefault(),
-              "{\"filename\":\"%s\"," +
-              "\"isDirectory\":%d," +
-              "\"modificationDate\":\"%s\"," +
-              "\"lastAccess\":\"%s\"," +
-              "\"fileSize\":%d," +
-              "\"ownerUserID\":%d," +
-              "\"ownerGroupID\":%d," +
-              "\"permissions\":\"%s\"," +
-              "\"flags\":%d}",
-              filename,
-              isDir,
-              file.getAttrs().getMTime(),
-              file.getAttrs().getATime(),
-              file.getAttrs().getSize(),
-              file.getAttrs().getUId(),
-              file.getAttrs().getGId(),
-              file.getAttrs().getPermissions(),
-              file.getAttrs().getFlags()
-            );
-            response.pushString(str);
+            // Build the entry with a real JSON serializer so filenames containing
+            // quotes, backslashes, control characters, or unicode are escaped
+            // correctly (manual string formatting produced invalid JSON, review #7).
+            // Field types are preserved to match the previous output: dates and
+            // permissions are strings, the rest are numbers.
+            JSONObject entry = new JSONObject();
+            entry.put("filename", filename);
+            entry.put("isDirectory", isDir);
+            entry.put("modificationDate", String.valueOf(file.getAttrs().getMTime()));
+            entry.put("lastAccess", String.valueOf(file.getAttrs().getATime()));
+            entry.put("fileSize", file.getAttrs().getSize());
+            entry.put("ownerUserID", file.getAttrs().getUId());
+            entry.put("ownerGroupID", file.getAttrs().getGId());
+            entry.put("permissions", String.valueOf(file.getAttrs().getPermissions()));
+            entry.put("flags", file.getAttrs().getFlags());
+            response.pushString(entry.toString());
           }
           callback.invoke(null, response);
         } catch (SftpException error) {
@@ -665,6 +648,9 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
     if (client != null) {
         client._session.disconnect();
     }
+    // Remove the client from the pool so it can be garbage collected. Without
+    // this the pool grows unbounded for apps that open many short-lived connections.
+    clientPool.remove(key);
   }
 
   private class progressMonitor implements SftpProgressMonitor {

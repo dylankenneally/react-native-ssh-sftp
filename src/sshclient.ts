@@ -71,15 +71,31 @@ export interface KeyPair {
   passphrase?: string;
 }
 
-export interface genKeyPair {
+/**
+ * Represents the result of a key pair generation operation.
+ */
+export interface GeneratedKeyPair {
   privateKey: string;
   publicKey?: string;
 }
 
-export interface keyDetail {
+/**
+ * Represents the details of an SSH key.
+ */
+export interface KeyDetails {
   keyType: string;
   keySize?: number;
 }
+
+/**
+ * @deprecated Use {@link GeneratedKeyPair} instead. This alias will be removed in a future major version.
+ */
+export type genKeyPair = GeneratedKeyPair;
+
+/**
+ * @deprecated Use {@link KeyDetails} instead. This alias will be removed in a future major version.
+ */
+export type keyDetail = KeyDetails;
 
 
 /**
@@ -102,10 +118,7 @@ export default class SSHClient {
   static getKeyDetails(key: string): Promise<{ keyType: string, keySize: number }> {
     return new Promise((resolve, reject) => {
       RNSSHClient.getKeyDetails(key)
-        .then((result: keyDetail) => {
-          /* eslint-disable no-console */
-          console.log(result);
-          /* eslint-enable no-console */
+        .then((result: KeyDetails) => {
           resolve({
             keyType: result.keyType,
             keySize: result.keySize || 0
@@ -116,7 +129,7 @@ export default class SSHClient {
         });
     });
   }
-  static generateKeyPair(type: string, passphrase?: string, keySize?: number, comment?: string): Promise<genKeyPair> {
+  static generateKeyPair(type: string, passphrase?: string, keySize?: number, comment?: string): Promise<GeneratedKeyPair> {
     return new Promise((resolve, reject) => {
       RNSSHClient.generateKeyPair(type, passphrase, keySize, comment, (error: CBError, keys: KeyPair) => {
 
@@ -189,6 +202,9 @@ export default class SSHClient {
     });
   }
 
+  // Monotonic counter used, together with a timestamp, to build unique client keys.
+  private static _keyCounter = 0;
+
   // "unique" key to identify callback from native library
   private _key: string;
   private _listeners: Record<string, EmitterSubscription>;
@@ -227,16 +243,19 @@ export default class SSHClient {
   }
 
   /**
-   * Generates a random client key, used to identify which callback match with which instance.
+   * Generates a unique client key, used to identify which native callback and
+   * event belongs to which instance.
    *
-   * @returns A string representing the random client key.
+   * Combines a timestamp, a process-lifetime monotonic counter, and a small
+   * random suffix. The counter guarantees uniqueness for clients created within
+   * the same millisecond, which the previous 16-bit random-only approach could
+   * not (it had a realistic collision risk across many connections).
+   *
+   * @returns A string uniquely identifying the client instance.
    */
   private static getRandomClientKey(): string {
-    // TODO This should be returned by the native code...
-    // There's no need for actual randomness, just uniqueness.
-    return Math.floor((1 + Math.random()) * 0x10000)
-      .toString(16)
-      .substring(1);
+    const random = Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0');
+    return `ssh_${Date.now().toString(36)}_${(++SSHClient._keyCounter).toString(36)}_${random}`;
   }
 
   /**
@@ -258,6 +277,30 @@ export default class SSHClient {
    */
   on(eventName: string, handler: EventHandler): void {
     this._handlers[eventName] = handler;
+  }
+
+  /**
+   * Removes the handler registered for the specified event, if any.
+   *
+   * Handlers registered via {@link on} otherwise persist until replaced; use this
+   * to cleanly tear down a subscription (for example in a component's unmount).
+   *
+   * @param eventName - The name of the event whose handler should be removed.
+   */
+  off(eventName: string): void {
+    delete this._handlers[eventName];
+  }
+
+  /**
+   * Removes the handler registered for the specified event, if any.
+   *
+   * Alias for {@link off}, provided for familiarity with the event-emitter naming
+   * convention.
+   *
+   * @param eventName - The name of the event whose handler should be removed.
+   */
+  removeListener(eventName: string): void {
+    this.off(eventName);
   }
 
   /**
@@ -422,9 +465,6 @@ export default class SSHClient {
 
     return new Promise((resolve, reject) => {
       RNSSHClient.connectSFTP(this._key, (error: CBError) => {
-        this._activeStream.sftp = true;
-        this.registerNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
-        this.registerNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
         if (callback) {
           callback(error);
         }
@@ -433,6 +473,9 @@ export default class SSHClient {
           return reject(error);
         }
 
+        this._activeStream.sftp = true;
+        this.registerNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+        this.registerNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
         resolve();
       });
     });
@@ -618,6 +661,18 @@ export default class SSHClient {
    * @returns A Promise that resolves when the upload is complete or rejects with an error.
    */
   sftpUpload(localFilePath: string, remoteFilePath: string, callback?: CallbackFunction<void>): Promise<void> {
+    // The native layer tracks a single cancel flag per client, so two concurrent
+    // uploads on the same client would clobber each other's cancel state. Reject
+    // a second upload while one is already running (review #13).
+    if (this._counters.upload > 0) {
+      const error = new Error('An SFTP upload is already in progress for this client');
+      if (callback) {
+        callback(error);
+      }
+
+      return Promise.reject(error);
+    }
+
     return this.checkSFTP(callback)
       .then(() => new Promise((resolve, reject) => {
         ++this._counters.upload;
@@ -654,6 +709,18 @@ export default class SSHClient {
    * @returns A promise that resolves with the response string when the download is complete.
    */
   sftpDownload(remoteFilePath: string, localFilePath: string, callback?: CallbackFunction<string>): Promise<string> {
+    // The native layer tracks a single cancel flag per client, so two concurrent
+    // downloads on the same client would clobber each other's cancel state. Reject
+    // a second download while one is already running (review #13).
+    if (this._counters.download > 0) {
+      const error = new Error('An SFTP download is already in progress for this client');
+      if (callback) {
+        callback(error);
+      }
+
+      return Promise.reject(error);
+    }
+
     return this.checkSFTP(callback)
       .then(() => new Promise((resolve, reject) => {
         ++this._counters.download;
@@ -683,10 +750,8 @@ export default class SSHClient {
   }
 
   /**
-   * Disconnects the SFTP connection.
-   *
-   * @remarks
-   * This method requires a fix in the native part. However, it still works since the native code's `disconnect()` method will actually close the SFTP stream. The only downside is that we can't explicitly close the SFTP channel.
+   * Disconnects the SFTP connection, closing the SFTP channel and removing the
+   * download/upload progress listeners. Supported on both iOS and Android.
    *
    * @example
    * ```typescript
@@ -694,16 +759,10 @@ export default class SSHClient {
    * ```
    */
   disconnectSFTP(): void {
-    // TODO This require a fix in the native part. I don't care.
-    // It actually still work since the native code disconnect() will actually
-    // close the sftp stream.
-    // Only downside is we can't *explicitly* close the sftp channel.
-    if (Platform.OS !== 'ios') {
-      this.unregisterNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
-      this.unregisterNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
-      RNSSHClient.disconnectSFTP(this._key);
-      this._activeStream.sftp = false;
-    }
+    this.unregisterNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+    this.unregisterNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
+    RNSSHClient.disconnectSFTP(this._key);
+    this._activeStream.sftp = false;
   }
 
   /**
