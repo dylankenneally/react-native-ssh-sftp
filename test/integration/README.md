@@ -21,16 +21,29 @@ ready-made target for that future app. See the testing docs for the full picture
 
 ## Running locally
 
+The quickest path is the all-in-one script, which starts the fixture, runs the
+test, and tears the fixture down (even if the test fails):
+
+```bash
+npm run test:integration:local
+```
+
+To manage the fixture yourself (useful when iterating, so you don't pay container
+startup on every run):
+
 ```bash
 # 1. Start the sshd fixture
 docker compose -f test/integration/docker-compose.yml up -d
 
-# 2. Run the smoke test
+# 2. Run the smoke test (repeat as often as you like)
 npm run test:integration
 
-# 3. Tear the fixture down
+# 3. Tear the fixture down when finished
 docker compose -f test/integration/docker-compose.yml down
 ```
+
+If you run `npm run test:integration` without the fixture up, the test retries
+briefly and then fails with a message telling you how to start it.
 
 ## Configuration
 

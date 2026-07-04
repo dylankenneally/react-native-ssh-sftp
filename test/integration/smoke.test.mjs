@@ -14,6 +14,7 @@
  *   docker compose -f test/integration/docker-compose.yml up -d
  *
  * Run with: npm run test:integration
+ * Or, to manage the fixture automatically: npm run test:integration:local
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,22 +30,82 @@ const config = {
 
 const REMOTE_DIR = process.env.SSH_REMOTE_DIR || '/config';
 
+const FIXTURE_NOT_RUNNING = [
+  `Could not reach sshd at ${config.host}:${config.port} — the OpenSSH fixture does not appear to be running.`,
+  '',
+  'Start it, then re-run the test:',
+  '  docker compose -f test/integration/docker-compose.yml up -d',
+  '  npm run test:integration',
+  '',
+  'Or run the whole cycle (start, test, stop) in one command:',
+  '  npm run test:integration:local',
+].join('\n');
+
 let conn;
 
-/** Opens a connection, retrying briefly so the test tolerates a just-started container. */
-function connect(attemptsLeft = 10) {
+// Errors that mean "the container is still coming up" rather than "misconfigured".
+// Docker publishes the port before sshd is ready, so a freshly started fixture can
+// refuse the connection (ECONNREFUSED), accept then reset it mid-handshake
+// (ECONNRESET), or time out (ETIMEDOUT) before sshd finishes initializing.
+const TRANSIENT_STARTUP_CODES = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT']);
+const CONNECT_BUDGET_MS = 60000;
+const RETRY_DELAY_MS = 2000;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A single connection attempt. Settles exactly once, and keeps a persistent error
+ * handler so that late errors from a discarded attempt (ssh2 emits a follow-up
+ * "Connection lost before handshake" after a reset) are swallowed rather than
+ * surfacing as an uncaught exception once the attempt has already been rejected.
+ */
+function attemptConnect() {
   return new Promise((resolve, reject) => {
     const client = new Client();
-    client.on('ready', () => resolve(client));
-    client.on('error', (error) => {
-      if (attemptsLeft > 0) {
-        setTimeout(() => connect(attemptsLeft - 1).then(resolve, reject), 2000);
-      } else {
-        reject(error);
+    let settled = false;
+    client.on('ready', () => {
+      if (!settled) {
+        settled = true;
+        resolve(client);
       }
     });
-    client.connect({ ...config, readyTimeout: 20000 });
+    client.on('error', (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+      // Later errors on this discarded client are intentionally ignored.
+    });
+    client.connect({ ...config, readyTimeout: 15000 });
   });
+}
+
+/**
+ * Connects, retrying through transient startup errors until sshd is reachable or the
+ * time budget elapses. Non-transient errors (e.g. auth failures) surface
+ * immediately; a budget timeout produces the actionable "fixture not running"
+ * message instead of a raw socket error.
+ */
+async function connect() {
+  const deadline = Date.now() + CONNECT_BUDGET_MS;
+  let attempt = 0;
+  let lastError;
+  while (Date.now() < deadline) {
+    attempt += 1;
+    try {
+      return await attemptConnect();
+    } catch (error) {
+      lastError = error;
+      if (!error || !TRANSIENT_STARTUP_CODES.has(error.code)) {
+        throw error;
+      }
+      console.error(`sshd not ready yet (${error.code}), retry ${attempt}...`);
+      await delay(RETRY_DELAY_MS);
+    }
+  }
+  const failure = new Error(FIXTURE_NOT_RUNNING);
+  failure.cause = lastError;
+  throw failure;
 }
 
 function exec(client, command) {

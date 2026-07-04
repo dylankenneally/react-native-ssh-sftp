@@ -1,6 +1,6 @@
 {
   "name": "@dylankenneally/react-native-ssh-sftp",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "SSH and SFTP client library for React Native",
   "main": "lib/sshclient.js",
   "scripts": {
@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest --run --coverage",
     "test:integration": "node --test test/integration/smoke.test.mjs",
+    "test:integration:local": "docker compose -f test/integration/docker-compose.yml up -d && npm run test:integration; status=$?; docker compose -f test/integration/docker-compose.yml down; exit $status",
     "docs": "cd docs && mint dev"
   },
   "keywords": [

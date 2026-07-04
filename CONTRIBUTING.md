@@ -34,7 +34,14 @@ works and how to add a test, are in the [Testing guide](./docs/guides/testing.md
   sub-threshold coverage blocks the commit. New code should arrive with tests.
 
 - **Integration tests** run a Dockerized OpenSSH server and a Node smoke test that
-  performs a real SSH command and an SFTP round-trip:
+  performs a real SSH command and an SFTP round-trip. The all-in-one script starts
+  the fixture, runs the test, and tears it down:
+
+  ```bash
+  npm run test:integration:local
+  ```
+
+  Or manage the fixture yourself when iterating:
 
   ```bash
   docker compose -f test/integration/docker-compose.yml up -d

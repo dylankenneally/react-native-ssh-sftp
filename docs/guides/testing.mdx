@@ -90,11 +90,25 @@ OpenSSH server with [Docker](https://www.docker.com) and runs a Node smoke test 
 connects with a standalone client ([`ssh2`](https://github.com/mscdex/ssh2)), runs a
 command, and completes an SFTP write, list, and read round-trip.
 
+The all-in-one script starts the fixture, runs the test, and tears it down:
+
+```bash
+npm run test:integration:local
+```
+
+Or manage the fixture yourself when iterating:
+
 ```bash
 docker compose -f test/integration/docker-compose.yml up -d
 npm run test:integration
 docker compose -f test/integration/docker-compose.yml down
 ```
+
+<Note>
+Running `npm run test:integration` without the fixture up makes the smoke test
+retry briefly and then fail with an actionable message pointing you at the command
+above, rather than a raw connection error.
+</Note>
 
 <Warning>
 The integration smoke test does **not** exercise `src/sshclient.ts`. That module
