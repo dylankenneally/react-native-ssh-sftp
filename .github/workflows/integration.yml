@@ -1,0 +1,47 @@
+# Integration tests: stand up the OpenSSH fixture and run the Node smoke test
+# against it. This is intentionally a separate workflow from `compile.yml` so that
+# container flakiness never blocks the fast unit-test feedback loop.
+
+name: Integration tests
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Use Node.js 24.x
+      uses: actions/setup-node@v6
+      with:
+        node-version: 24.x
+        cache: 'npm'
+    - run: npm ci
+
+    - name: Start OpenSSH fixture
+      run: docker compose -f test/integration/docker-compose.yml up -d
+
+    - name: Wait for sshd to accept connections
+      run: |
+        for i in $(seq 1 30); do
+          if nc -z 127.0.0.1 2222; then
+            echo "sshd is accepting connections"
+            exit 0
+          fi
+          echo "waiting for sshd... ($i)"
+          sleep 2
+        done
+        echo "sshd did not become ready in time"
+        exit 1
+
+    - name: Run integration smoke test
+      run: npm run test:integration
+
+    - name: Tear down OpenSSH fixture
+      if: always()
+      run: docker compose -f test/integration/docker-compose.yml down

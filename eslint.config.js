@@ -57,6 +57,45 @@ module.exports = defineConfig([
     },
   },
 
+  // Test files, mocks, and tooling config run in Node (not the RN runtime) and use
+  // Vitest/Node APIs. Relax the source-only rules that don't apply to test code.
+  {
+    files: [
+      'src/**/*.test.ts',
+      'test/**/*.{ts,js,mjs}',
+      '.github/scripts/**/*.{js,mjs}',
+      'vitest.config.ts',
+    ],
+    languageOptions: {
+      globals: {
+        __dirname: true,
+        process: true,
+        console: true,
+        Buffer: true,
+        module: true,
+        require: true,
+        global: true,
+        setTimeout: true,
+        clearTimeout: true,
+        setInterval: true,
+        clearInterval: true,
+        URL: true,
+      },
+    },
+    rules: {
+      // Test bodies (describe/it callbacks) legitimately exceed the source limit.
+      'max-lines-per-function': 'off',
+      // Tests and the OpenSSH smoke harness log progress intentionally.
+      'no-console': 'off',
+      // Native callbacks and the react-native stub are loosely typed by design.
+      '@typescript-eslint/no-explicit-any': 'off',
+      // Allow underscore-prefixed unused args (e.g. RN signature placeholders).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Tests reference known-issue tickets by name; that is intentional here.
+      'no-warning-comments': 'off',
+    },
+  },
+
   globalIgnores([
     // Project
     'node_modules',

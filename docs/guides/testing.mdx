@@ -1,0 +1,141 @@
+---
+title: Testing
+description: How the test suite is structured, how to run each tier locally and in CI, and what is deferred to future work.
+---
+
+import { EditThisPage } from "/snippets/edit-this-page.jsx"
+
+React Native SSH SFTP is tested in tiers. Each tier answers a different question,
+runs in a different place, and has a different cost.
+
+<CardGroup cols={2}>
+  <Card title="Unit tests" icon="vial">
+    Fast [Vitest](https://vitest.dev) tests for the TypeScript API in `src/sshclient.ts`, with the native bridge mocked. These are the confidence core.
+  </Card>
+  <Card title="Integration fixture" icon="server">
+    A Dockerized OpenSSH server plus a Node smoke test that proves real SSH and SFTP work against a predictable target.
+  </Card>
+</CardGroup>
+
+## Unit tests
+
+The unit suite drives the `SSHClient` class in a plain Node process. It covers the
+connection factories, platform dispatch, command execution, the shell lifecycle,
+the full SFTP surface, transfer counters, event routing, and disconnect cleanup.
+
+Run them:
+
+```bash
+npm test              # run once
+npm run test:watch    # re-run on change
+npm run test:coverage # run with a coverage report and thresholds
+```
+
+### How the react-native mock works
+
+`src/sshclient.ts` imports from `react-native`, a package that only resolves inside
+a React Native runtime. For unit tests, `vitest.config.ts` aliases `react-native`
+to a hand-written stub at `test/mocks/react-native.ts`.
+
+The stub exposes exactly what the class touches:
+
+- `NativeModules.RNSSHClient` — a mock function per native method, so each test
+  steers a call down its success or error path.
+- `NativeEventEmitter` / `DeviceEventEmitter` — backed by a shared listener store so
+  a test can emit native events and assert routing.
+- `Platform` — a mutable `OS` you can flip between `ios` and `android`.
+
+Because Vite resolves the alias and a relative import to the same file, tests import
+the mock's helpers directly and share the exact instance the class under test uses.
+
+<Note>
+The real native bridge always invokes callbacks asynchronously. The test helpers in
+`test/unit/support.ts` mirror this by deferring callbacks onto a microtask, which
+keeps patterns like `const client = new SSHClient(..., cb => resolve(client))`
+working correctly.
+</Note>
+
+### Adding a unit test
+
+<Steps>
+  <Step title="Create a test file">
+    Add a `*.test.ts` file under `test/unit/`.
+  </Step>
+  <Step title="Import the class and the mock">
+    Import `SSHClient` from `../../src/sshclient` and the helpers from
+    `../mocks/react-native` and `./support`.
+  </Step>
+  <Step title="Reset between tests">
+    Call `resetMocks()` in a `beforeEach` so listeners and mock state do not leak
+    between cases.
+  </Step>
+  <Step title="Drive a native call">
+    Set an implementation with `resolveNative(...)` or `rejectNative(...)`, invoke
+    the method, and assert the resolved value, the rejection, and the arguments
+    forwarded to the native mock.
+  </Step>
+</Steps>
+
+### Coverage expectations
+
+Coverage runs on the v8 provider and enforces global thresholds set in
+`vitest.config.ts`. A commit or CI run fails if coverage drops below the floor, so
+new code should arrive with tests. Raise the thresholds as coverage grows rather
+than lowering them to fit a change.
+
+## Integration fixture
+
+The integration harness lives in `test/integration/`. It brings up a disposable
+OpenSSH server with [Docker](https://www.docker.com) and runs a Node smoke test that
+connects with a standalone client ([`ssh2`](https://github.com/mscdex/ssh2)), runs a
+command, and completes an SFTP write, list, and read round-trip.
+
+```bash
+docker compose -f test/integration/docker-compose.yml up -d
+npm run test:integration
+docker compose -f test/integration/docker-compose.yml down
+```
+
+<Warning>
+The integration smoke test does **not** exercise `src/sshclient.ts`. That module
+depends on the React Native native bridge, which does not exist in a plain Node
+process. The fixture validates the server target and the shape of a real session; it
+is the ready-made target for the native end-to-end phase described below.
+</Warning>
+
+Connection details are read from the environment with local defaults that match the
+compose file (`SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PASSWORD`, `SSH_REMOTE_DIR`).
+See `test/integration/README.md` for the full table.
+
+## Continuous integration
+
+- **Unit tests** run in the `Compile package` workflow on every push and pull
+  request, across Node 18, 20, and 24, and upload a coverage report.
+- **Integration tests** run in a separate `Integration tests` workflow that stands
+  up the OpenSSH fixture, so container flakiness never blocks unit feedback.
+
+## Future work
+
+Two tiers are intentionally deferred. They require a native runtime that Node cannot
+provide, and each deserves its own design pass.
+
+<AccordionGroup>
+  <Accordion title="Native unit tests" icon="mobile-screen">
+    Test the platform bridges directly: iOS (`ios/RNSSHClient.m`, `SSHClient.m`) with
+    XCTest, and Android (`RNSshClientModule.java`) with JUnit. This would cover logic
+    that lives only in native code, such as JSON serialization of directory listings.
+  </Accordion>
+  <Accordion title="Native end-to-end tests" icon="robot">
+    Add an example app and drive it with Detox or Maestro against the Docker OpenSSH
+    fixture. This is the only tier that exercises the full stack — JavaScript API,
+    native bridge, and a real server — end to end.
+  </Accordion>
+</AccordionGroup>
+
+## Related resources
+
+- [Contributing guide](/guides/contributing)
+- [Vitest documentation](https://vitest.dev)
+- [ssh2 client](https://github.com/mscdex/ssh2)
+
+<EditThisPage filePath="docs/guides/testing.mdx" />

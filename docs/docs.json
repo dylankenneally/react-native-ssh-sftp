@@ -61,6 +61,7 @@
             "group": "Project",
             "pages": [
               "guides/contributing",
+              "guides/testing",
               "guides/security",
               "guides/license"
             ]

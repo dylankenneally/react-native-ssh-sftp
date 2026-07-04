@@ -1,0 +1,24 @@
+# OpenSSH server fixture for integration testing.
+#
+# Brings up a disposable sshd with a known user/password so the Node smoke test
+# (and, in future, a native end-to-end app) can exercise real SSH + SFTP against
+# a predictable target.
+#
+#   docker compose -f test/integration/docker-compose.yml up -d
+#   npm run test:integration
+#   docker compose -f test/integration/docker-compose.yml down
+services:
+  sshd:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: rnssh-integration-sshd
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - PASSWORD_ACCESS=true
+      - USER_NAME=tester
+      - USER_PASSWORD=testpass
+      - SUDO_ACCESS=false
+    ports:
+      # host:container — the linuxserver image listens on 2222 inside the container.
+      - "2222:2222"
