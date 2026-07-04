@@ -36,5 +36,8 @@ local.properties
 # CocoaPods
 Pods
 
+# AI
+.kiro/
+
 # Dev scratch pad
 /scratch
