@@ -230,6 +230,28 @@ await client.writeToShell('top');
 client.closeShell();
 ```
 
+### Removing a handler
+
+Use `off()` (or its alias `removeListener()`) to remove a previously registered handler, for example when tearing down a component:
+
+```typescript
+client.on('Shell', handleOutput);
+
+// Later, stop receiving the event:
+client.off('Shell');
+// or, equivalently:
+client.removeListener('Shell');
+```
+
+```typescript
+off(eventName: string): void
+removeListener(eventName: string): void
+```
+
+<ParamField path="eventName" type="string" required>
+  The name of the event whose handler should be removed (for example, `'Shell'`).
+</ParamField>
+
 ### Notes
 
 - The 'Shell' event listener is automatically registered when calling `startShell()`

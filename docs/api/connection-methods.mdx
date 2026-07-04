@@ -153,7 +153,7 @@ static generateKeyPair(
   passphrase?: string,
   keySize?: number,
   comment?: string
-): Promise<genKeyPair>
+): Promise<GeneratedKeyPair>
 ```
 
 #### Parameters
@@ -176,11 +176,11 @@ static generateKeyPair(
 
 #### Returns
 
-<ResponseField name="Promise<genKeyPair>" type="Promise<genKeyPair>">
+<ResponseField name="Promise<GeneratedKeyPair>" type="Promise<GeneratedKeyPair>">
   A Promise that resolves to an object containing the generated key pair.
 
   ```typescript
-  interface genKeyPair {
+  interface GeneratedKeyPair {
     privateKey: string;
     publicKey?: string;
   }

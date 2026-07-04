@@ -71,15 +71,31 @@ export interface KeyPair {
   passphrase?: string;
 }
 
-export interface genKeyPair {
+/**
+ * Represents the result of a key pair generation operation.
+ */
+export interface GeneratedKeyPair {
   privateKey: string;
   publicKey?: string;
 }
 
-export interface keyDetail {
+/**
+ * Represents the details of an SSH key.
+ */
+export interface KeyDetails {
   keyType: string;
   keySize?: number;
 }
+
+/**
+ * @deprecated Use {@link GeneratedKeyPair} instead. This alias will be removed in a future major version.
+ */
+export type genKeyPair = GeneratedKeyPair;
+
+/**
+ * @deprecated Use {@link KeyDetails} instead. This alias will be removed in a future major version.
+ */
+export type keyDetail = KeyDetails;
 
 
 /**
@@ -102,7 +118,7 @@ export default class SSHClient {
   static getKeyDetails(key: string): Promise<{ keyType: string, keySize: number }> {
     return new Promise((resolve, reject) => {
       RNSSHClient.getKeyDetails(key)
-        .then((result: keyDetail) => {
+        .then((result: KeyDetails) => {
           resolve({
             keyType: result.keyType,
             keySize: result.keySize || 0
@@ -113,7 +129,7 @@ export default class SSHClient {
         });
     });
   }
-  static generateKeyPair(type: string, passphrase?: string, keySize?: number, comment?: string): Promise<genKeyPair> {
+  static generateKeyPair(type: string, passphrase?: string, keySize?: number, comment?: string): Promise<GeneratedKeyPair> {
     return new Promise((resolve, reject) => {
       RNSSHClient.generateKeyPair(type, passphrase, keySize, comment, (error: CBError, keys: KeyPair) => {
 
@@ -261,6 +277,30 @@ export default class SSHClient {
    */
   on(eventName: string, handler: EventHandler): void {
     this._handlers[eventName] = handler;
+  }
+
+  /**
+   * Removes the handler registered for the specified event, if any.
+   *
+   * Handlers registered via {@link on} otherwise persist until replaced; use this
+   * to cleanly tear down a subscription (for example in a component's unmount).
+   *
+   * @param eventName - The name of the event whose handler should be removed.
+   */
+  off(eventName: string): void {
+    delete this._handlers[eventName];
+  }
+
+  /**
+   * Removes the handler registered for the specified event, if any.
+   *
+   * Alias for {@link off}, provided for familiarity with the event-emitter naming
+   * convention.
+   *
+   * @param eventName - The name of the event whose handler should be removed.
+   */
+  removeListener(eventName: string): void {
+    this.off(eventName);
   }
 
   /**

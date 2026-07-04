@@ -47,6 +47,31 @@ describe('event routing and disconnect cleanup', () => {
       expect(() => emitNativeEvent('Shell', { name: 'Shell', key, value: 'x' })).not.toThrow();
     });
 
+    it('stops dispatching after the handler is removed with off()', async () => {
+      const client = await connectedClient('ios');
+      const key = await startShellAndGetKey(client);
+      const received: unknown[] = [];
+      client.on('Shell', (value) => received.push(value));
+
+      emitNativeEvent('Shell', { name: 'Shell', key, value: 'first' });
+      client.off('Shell');
+      emitNativeEvent('Shell', { name: 'Shell', key, value: 'second' });
+
+      expect(received).toEqual(['first']);
+    });
+
+    it('removeListener is an alias for off()', async () => {
+      const client = await connectedClient('ios');
+      const key = await startShellAndGetKey(client);
+      const received: unknown[] = [];
+      client.on('Shell', (value) => received.push(value));
+
+      client.removeListener('Shell');
+      emitNativeEvent('Shell', { name: 'Shell', key, value: 'ignored' });
+
+      expect(received).toEqual([]);
+    });
+
     it('isolates events between two concurrent clients', async () => {
       const clientA = await connectedClient('ios');
       const keyA = await startShellAndGetKey(clientA);

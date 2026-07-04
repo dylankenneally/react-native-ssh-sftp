@@ -127,16 +127,20 @@ files.forEach(file => {
 });
 ```
 
-### genKeyPair
+### GeneratedKeyPair
 
 Represents the result of a key pair generation operation.
 
 ```typescript
-interface genKeyPair {
+interface GeneratedKeyPair {
   privateKey: string;
   publicKey?: string;
 }
 ```
+
+<Note>
+The lowercase `genKeyPair` name is still exported as a deprecated alias for backward compatibility and will be removed in a future major version. Use `GeneratedKeyPair` in new code.
+</Note>
 
 **Properties:**
 
@@ -148,7 +152,7 @@ interface genKeyPair {
 **Usage:**
 
 ```typescript
-const keys: genKeyPair = await SSHClient.generateKeyPair(
+const keys: GeneratedKeyPair = await SSHClient.generateKeyPair(
   'rsa',
   'passphrase',
   2048,
@@ -159,16 +163,20 @@ console.log('Private Key:', keys.privateKey);
 console.log('Public Key:', keys.publicKey);
 ```
 
-### keyDetail
+### KeyDetails
 
 Represents the details of an SSH key.
 
 ```typescript
-interface keyDetail {
+interface KeyDetails {
   keyType: string;
   keySize?: number;
 }
 ```
+
+<Note>
+The lowercase `keyDetail` name is still exported as a deprecated alias for backward compatibility and will be removed in a future major version. Use `KeyDetails` in new code.
+</Note>
 
 **Properties:**
 
@@ -180,7 +188,7 @@ interface keyDetail {
 **Usage:**
 
 ```typescript
-const details: keyDetail = await SSHClient.getKeyDetails(privateKey);
+const details: KeyDetails = await SSHClient.getKeyDetails(privateKey);
 
 console.log(`Key Type: ${details.keyType}`);
 console.log(`Key Size: ${details.keySize} bits`);
