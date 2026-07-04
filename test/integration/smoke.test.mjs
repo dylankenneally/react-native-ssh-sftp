@@ -30,10 +30,11 @@ const config = {
 
 const REMOTE_DIR = process.env.SSH_REMOTE_DIR || '/config';
 
-const FIXTURE_NOT_RUNNING = [
-  `Could not reach sshd at ${config.host}:${config.port} — the OpenSSH fixture does not appear to be running.`,
+const FIXTURE_UNREACHABLE = [
+  `Could not establish an SSH session with sshd at ${config.host}:${config.port} within the time budget.`,
   '',
-  'Start it, then re-run the test:',
+  'The most likely cause is that the OpenSSH fixture is not running. Start it, then',
+  're-run the test:',
   '  docker compose -f test/integration/docker-compose.yml up -d',
   '  npm run test:integration',
   '',
@@ -43,13 +44,11 @@ const FIXTURE_NOT_RUNNING = [
 
 let conn;
 
-// Errors that mean "the container is still coming up" rather than "misconfigured".
-// Docker publishes the port before sshd is ready, so a freshly started fixture can
-// refuse the connection (ECONNREFUSED), accept then reset it mid-handshake
-// (ECONNRESET), or time out (ETIMEDOUT) before sshd finishes initializing.
-const TRANSIENT_STARTUP_CODES = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT']);
-const CONNECT_BUDGET_MS = 60000;
-const RETRY_DELAY_MS = 2000;
+// Total time to keep retrying while the container comes up, and the pause between
+// attempts. The budget is generous because a cold `docker compose up` has to pull
+// the image and let sshd fully initialize. Override via env if needed.
+const CONNECT_BUDGET_MS = Number(process.env.SSH_CONNECT_BUDGET_MS || 60000);
+const RETRY_DELAY_MS = Number(process.env.SSH_RETRY_DELAY_MS || 2000);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,11 +79,30 @@ function attemptConnect() {
   });
 }
 
+/** Short, human-readable reason for a connection error, used in retry logging. */
+function describeError(error) {
+  if (!error) {
+    return 'unknown error';
+  }
+  return error.code || error.level || error.message || 'unknown error';
+}
+
 /**
- * Connects, retrying through transient startup errors until sshd is reachable or the
- * time budget elapses. Non-transient errors (e.g. auth failures) surface
- * immediately; a budget timeout produces the actionable "fixture not running"
- * message instead of a raw socket error.
+ * Connects, retrying through the container's entire startup window until sshd is
+ * fully ready or the time budget elapses.
+ *
+ * A freshly started fixture can fail in several transient ways before it is ready,
+ * and which one you hit is timing-dependent:
+ *   - the port refuses the connection (ECONNREFUSED) — sshd not listening yet;
+ *   - the connection is reset mid-handshake (ECONNRESET) — sshd starting;
+ *   - the handshake times out;
+ *   - sshd completes the handshake but rejects authentication
+ *     ("All configured authentication methods failed", level 'client-authentication')
+ *     because the test user has not been provisioned yet.
+ *
+ * All of these are retried within the budget — during startup they all mean "not
+ * ready yet". Only after the budget elapses do we give up, with an actionable
+ * message that also includes the last error seen.
  */
 async function connect() {
   const deadline = Date.now() + CONNECT_BUDGET_MS;
@@ -96,14 +114,11 @@ async function connect() {
       return await attemptConnect();
     } catch (error) {
       lastError = error;
-      if (!error || !TRANSIENT_STARTUP_CODES.has(error.code)) {
-        throw error;
-      }
-      console.error(`sshd not ready yet (${error.code}), retry ${attempt}...`);
+      console.error(`sshd not ready yet (${describeError(error)}), retry ${attempt}...`);
       await delay(RETRY_DELAY_MS);
     }
   }
-  const failure = new Error(FIXTURE_NOT_RUNNING);
+  const failure = new Error(`${FIXTURE_UNREACHABLE}\n\nLast error after ${attempt} attempt(s): ${describeError(lastError)}`);
   failure.cause = lastError;
   throw failure;
 }

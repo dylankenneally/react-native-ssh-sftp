@@ -26,19 +26,9 @@ jobs:
     - name: Start OpenSSH fixture
       run: docker compose -f test/integration/docker-compose.yml up -d
 
-    - name: Wait for sshd to accept connections
-      run: |
-        for i in $(seq 1 30); do
-          if nc -z 127.0.0.1 2222; then
-            echo "sshd is accepting connections"
-            exit 0
-          fi
-          echo "waiting for sshd... ($i)"
-          sleep 2
-        done
-        echo "sshd did not become ready in time"
-        exit 1
-
+    # No explicit readiness wait: a port check passes the moment Docker publishes
+    # the port, which is before sshd can authenticate. The smoke test retries
+    # through the whole startup window (including auth-not-ready-yet) on its own.
     - name: Run integration smoke test
       run: npm run test:integration
 
