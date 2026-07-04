@@ -39,8 +39,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
-import okhttp3.internal.Util;
-
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
@@ -126,7 +124,7 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
                 int keyType = getKeyTypeFromString(type); // You'll implement this to translate string to type
                 JSch jsch = new JSch();
                 KeyPair kpair = KeyPair.genKeyPair(jsch, keyType, keySize);
-                
+
                 // callback.invoke("Finger print: " + kpair.getFingerPrint());
                 ByteArrayOutputStream privateKeyOut = new ByteArrayOutputStream();
                 ByteArrayOutputStream publicKeyOut = new ByteArrayOutputStream();
@@ -665,6 +663,9 @@ public class RNSshClientModule extends ReactContextBaseJavaModule {
     if (client != null) {
         client._session.disconnect();
     }
+    // Remove the client from the pool so it can be garbage collected. Without
+    // this the pool grows unbounded for apps that open many short-lived connections.
+    clientPool.remove(key);
   }
 
   private class progressMonitor implements SftpProgressMonitor {

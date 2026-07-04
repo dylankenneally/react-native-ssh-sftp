@@ -92,7 +92,7 @@ describe('event routing and disconnect cleanup', () => {
       expect(listenerCount()).toBe(0);
     });
 
-    it('closes the shell but leaves SFTP untouched on iOS (documented no-op)', async () => {
+    it('closes the shell and tears down SFTP on iOS', async () => {
       const client = await connectedClient('ios');
       await startShellAndGetKey(client);
       RNSSHClient.connectSFTP.mockImplementation(resolveNative());
@@ -103,11 +103,11 @@ describe('event routing and disconnect cleanup', () => {
       // Shell is fully torn down.
       expect(RNSSHClient.closeShell).toHaveBeenCalledTimes(1);
       expect(listenerCount('Shell')).toBe(0);
-      // iOS disconnectSFTP is a documented no-op: native method not called and
-      // progress listeners remain registered (see review #6).
-      expect(RNSSHClient.disconnectSFTP).not.toHaveBeenCalled();
-      expect(listenerCount('DownloadProgress')).toBe(1);
-      expect(listenerCount('UploadProgress')).toBe(1);
+      // iOS disconnectSFTP now closes the SFTP channel and removes the progress
+      // listeners, matching Android (see review #6, Phase 1.5).
+      expect(RNSSHClient.disconnectSFTP).toHaveBeenCalledTimes(1);
+      expect(listenerCount('DownloadProgress')).toBe(0);
+      expect(listenerCount('UploadProgress')).toBe(0);
       expect(RNSSHClient.disconnect).toHaveBeenCalledTimes(1);
     });
   });

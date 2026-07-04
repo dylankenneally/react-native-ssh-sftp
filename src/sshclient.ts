@@ -103,9 +103,6 @@ export default class SSHClient {
     return new Promise((resolve, reject) => {
       RNSSHClient.getKeyDetails(key)
         .then((result: keyDetail) => {
-          /* eslint-disable no-console */
-          console.log(result);
-          /* eslint-enable no-console */
           resolve({
             keyType: result.keyType,
             keySize: result.keySize || 0
@@ -422,9 +419,6 @@ export default class SSHClient {
 
     return new Promise((resolve, reject) => {
       RNSSHClient.connectSFTP(this._key, (error: CBError) => {
-        this._activeStream.sftp = true;
-        this.registerNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
-        this.registerNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
         if (callback) {
           callback(error);
         }
@@ -433,6 +427,9 @@ export default class SSHClient {
           return reject(error);
         }
 
+        this._activeStream.sftp = true;
+        this.registerNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+        this.registerNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
         resolve();
       });
     });
@@ -683,10 +680,8 @@ export default class SSHClient {
   }
 
   /**
-   * Disconnects the SFTP connection.
-   *
-   * @remarks
-   * This method requires a fix in the native part. However, it still works since the native code's `disconnect()` method will actually close the SFTP stream. The only downside is that we can't explicitly close the SFTP channel.
+   * Disconnects the SFTP connection, closing the SFTP channel and removing the
+   * download/upload progress listeners. Supported on both iOS and Android.
    *
    * @example
    * ```typescript
@@ -694,16 +689,10 @@ export default class SSHClient {
    * ```
    */
   disconnectSFTP(): void {
-    // TODO This require a fix in the native part. I don't care.
-    // It actually still work since the native code disconnect() will actually
-    // close the sftp stream.
-    // Only downside is we can't *explicitly* close the sftp channel.
-    if (Platform.OS !== 'ios') {
-      this.unregisterNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
-      this.unregisterNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
-      RNSSHClient.disconnectSFTP(this._key);
-      this._activeStream.sftp = false;
-    }
+    this.unregisterNativeListener(NATIVE_EVENT_DOWNLOAD_PROGRESS);
+    this.unregisterNativeListener(NATIVE_EVENT_UPLOAD_PROGRESS);
+    RNSSHClient.disconnectSFTP(this._key);
+    this._activeStream.sftp = false;
   }
 
   /**

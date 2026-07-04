@@ -415,6 +415,9 @@ RCT_EXPORT_METHOD(disconnect:(nonnull NSString*)key) {
     if (client && client._session) {
         [client._session disconnect];
     }
+    // Remove the client from the pool so it can be released. Without this the
+    // pool grows unbounded for apps that open many short-lived connections.
+    [[self clientPool] removeObjectForKey:key];
 }
 
 @end
